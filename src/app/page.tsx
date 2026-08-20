@@ -272,8 +272,8 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
       />
 
       <main className="flex-1 max-w-[1700px] w-full mx-auto p-2 sm:p-4 flex flex-col gap-2 sm:gap-3 overflow-hidden min-h-0">
-        {/* Agent Cards (compact on mobile) */}
-        <div className="hidden sm:block shrink-0">
+        {/* 4 Agent Cards always visible */}
+        <div className="shrink-0">
           <AgentStatusCard
             findings={findings}
             activeAgentId={activeAgentId}

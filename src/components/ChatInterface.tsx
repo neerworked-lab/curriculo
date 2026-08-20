@@ -42,6 +42,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [isRecording, setIsRecording] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<any>(null)
@@ -50,6 +51,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isProcessing])
+
+  // Auto-resize textarea like Antigravity
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      const scrollHeight = textareaRef.current.scrollHeight
+      textareaRef.current.style.height = `${Math.min(Math.max(scrollHeight, 44), 160)}px`
+    }
+  }, [inputText])
 
   // Speech to text initialization
   useEffect(() => {
@@ -109,7 +119,18 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setInputText('')
     setAttachments([])
 
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '44px'
+    }
+
     await onSendMessage(textToSend, attachmentsToSend)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,7 +201,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       )}
 
-      {/* 1. TOP SCROLLABLE MESSAGES AREA (Independent Scroll like Antigravity) */}
+      {/* 1. TOP SCROLLABLE MESSAGES AREA (Independent Scroll) */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3.5 custom-scrollbar min-h-0">
         {messages.map((msg) => {
           const isUser = msg.sender === 'user'
@@ -198,7 +219,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
               {/* Message Bubble */}
               <div
-                className={`max-w-[90%] sm:max-w-[78%] rounded-2xl p-3.5 sm:p-4 text-xs sm:text-sm leading-relaxed shadow-lg ${
+                className={`max-w-[92%] sm:max-w-[80%] rounded-2xl p-3.5 sm:p-4 text-xs sm:text-sm leading-relaxed shadow-lg ${
                   isUser
                     ? 'bg-emerald-600 text-white rounded-tr-none'
                     : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none'
@@ -326,88 +347,102 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       )}
 
-      {/* 4. PERMANENT FIXED INPUT COMPOSER (Always visible at the bottom) */}
-      <form
-        onSubmit={handleSend}
-        className="p-2 sm:p-3 bg-slate-950 border-t border-slate-800/80 flex items-center gap-1.5 shrink-0 z-10 sticky bottom-0"
-      >
-        {/* Hidden inputs */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          accept=".pdf,.docx,.doc,.txt"
-          className="hidden"
-        />
-        <input
-          type="file"
-          ref={photoInputRef}
-          onChange={handleFileChange}
-          accept="image/*"
-          className="hidden"
-        />
+      {/* 4. ANTIGRAVITY-STYLE EXPANDABLE COMPOSER (Textarea on top, 4 Action Buttons below) */}
+      <div className="p-2 sm:p-3 bg-slate-950 border-t border-slate-800/80 shrink-0 z-10 sticky bottom-0">
+        <div className="bg-slate-900/90 rounded-2xl border border-slate-800 focus-within:border-emerald-500/60 focus-within:ring-1 focus-within:ring-emerald-500/40 transition-all p-2 flex flex-col gap-2">
+          
+          {/* Hidden inputs */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".pdf,.docx,.doc,.txt"
+            className="hidden"
+          />
+          <input
+            type="file"
+            ref={photoInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
 
-        {/* Upload Doc Button */}
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading || isProcessing}
-          className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors disabled:opacity-50 shrink-0"
-          title="Subir documento PDF o Word"
-        >
-          {isUploading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
-          ) : (
-            <Paperclip className="w-4 h-4" />
-          )}
-        </button>
+          {/* Auto-expanding Textarea (independent vertical scroll) */}
+          <textarea
+            ref={textareaRef}
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            rows={1}
+            placeholder="Escribe a Alex o sube tu CV (PDF o Word)..."
+            disabled={isProcessing}
+            className="w-full bg-transparent text-slate-100 placeholder-slate-500 resize-none text-xs sm:text-sm focus:outline-none custom-scrollbar max-h-[160px] min-h-[40px] px-1 py-1 leading-relaxed"
+          />
 
-        {/* Upload Photo Button */}
-        <button
-          type="button"
-          onClick={() => photoInputRef.current?.click()}
-          disabled={isUploading || isProcessing}
-          className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors disabled:opacity-50 shrink-0"
-          title="Subir foto de perfil"
-        >
-          <ImageIcon className="w-4 h-4" />
-        </button>
+          {/* Bottom Action Bar: 4 Buttons (Attach, Photo, Mic, Send) */}
+          <div className="flex items-center justify-between pt-1 border-t border-slate-800/50">
+            {/* Left 3 tool buttons */}
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              {/* 1. Upload Doc */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading || isProcessing}
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors disabled:opacity-50 flex items-center gap-1 text-[11px]"
+                title="Subir documento PDF o Word"
+              >
+                {isUploading ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                ) : (
+                  <Paperclip className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">Documento</span>
+              </button>
 
-        {/* Text Input */}
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Escribe a Alex o sube tu CV..."
-          disabled={isProcessing}
-          className="min-w-0 flex-1 bg-slate-900/90 text-slate-100 placeholder-slate-500 rounded-xl px-3 py-2 text-xs sm:text-sm border border-slate-800 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/40 transition-all"
-        />
+              {/* 2. Upload Photo */}
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={isUploading || isProcessing}
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors disabled:opacity-50 flex items-center gap-1 text-[11px]"
+                title="Subir foto de perfil"
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Foto</span>
+              </button>
 
-        {/* Microphone Button (Speech to Text) */}
-        <button
-          type="button"
-          onClick={toggleRecording}
-          disabled={isProcessing}
-          className={`p-2 rounded-xl border transition-all shrink-0 ${
-            isRecording
-              ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse'
-              : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
-          }`}
-          title={isRecording ? 'Detener grabación' : 'Dictar mensaje por voz'}
-        >
-          {isRecording ? <MicOff className="w-4 h-4 text-red-400" /> : <Mic className="w-4 h-4" />}
-        </button>
+              {/* 3. Microphone */}
+              <button
+                type="button"
+                onClick={toggleRecording}
+                disabled={isProcessing}
+                className={`p-1.5 sm:p-2 rounded-xl transition-all flex items-center gap-1 text-[11px] ${
+                  isRecording
+                    ? 'bg-red-500/20 border border-red-500/50 text-red-400 animate-pulse'
+                    : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300'
+                }`}
+                title={isRecording ? 'Detener dictado' : 'Dictar por voz'}
+              >
+                {isRecording ? <MicOff className="w-4 h-4 text-red-400" /> : <Mic className="w-4 h-4" />}
+                <span className="hidden sm:inline">{isRecording ? 'Grabando...' : 'Voz'}</span>
+              </button>
+            </div>
 
-        {/* Send Button */}
-        <button
-          type="submit"
-          disabled={(!inputText.trim() && attachments.length === 0) || isProcessing}
-          className="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all disabled:opacity-40 disabled:hover:bg-emerald-500 shadow-md shadow-emerald-500/20 shrink-0"
-          title="Enviar mensaje"
-        >
-          <Send className="w-4 h-4" />
-        </button>
-      </form>
+            {/* 4. Send Button */}
+            <button
+              type="button"
+              onClick={() => handleSend()}
+              disabled={(!inputText.trim() && attachments.length === 0) || isProcessing}
+              className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all disabled:opacity-40 disabled:hover:bg-emerald-500 shadow-md shadow-emerald-500/20 flex items-center gap-1.5 text-xs shrink-0"
+              title="Enviar mensaje"
+            >
+              <span className="hidden sm:inline">Enviar</span>
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+
+        </div>
+      </div>
     </div>
   )
 }
