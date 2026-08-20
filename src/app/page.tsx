@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { AgentStatusCard } from '@/components/AgentStatusCard'
 import { ChatInterface } from '@/components/ChatInterface'
-import { ResumePreview } from '@/components/ResumePreview'
+import { ResumePreviewModal } from '@/components/ResumePreviewModal'
 import { AuthScreen } from '@/components/AuthScreen'
 import { ChatMessage, Attachment, StructuredResume, AgentFinding, AgentId } from '@/types'
 import { runOrchestratorChat, runCompleteAgentPipeline } from '@/lib/gemini'
@@ -12,6 +12,7 @@ import { generateDocxResume } from '@/lib/exporters/wordExporter'
 import { generatePptxResume } from '@/lib/exporters/pptxExporter'
 import { generatePdfResume } from '@/lib/exporters/pdfExporter'
 import { parseUploadedFile } from '@/lib/parsers/documentParser'
+import { Eye, FileText, Sparkles, ShieldCheck } from 'lucide-react'
 
 export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -33,7 +34,7 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
   const [activeAgentId, setActiveAgentId] = useState<AgentId | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
-  const [splitView, setSplitView] = useState(true)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   useEffect(() => {
     const savedEmail = localStorage.getItem('user_session_email') || null
@@ -109,7 +110,6 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
       setFindings(result.findings)
       setStructuredResume(result.finalResume)
       setActiveAgentId(null)
-      setSplitView(true)
 
       setMessages((prev) => [
         ...prev,
@@ -178,7 +178,6 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
 
       if (data.structuredResume) {
         setStructuredResume(data.structuredResume)
-        setSplitView(true)
       }
 
       setMessages((prev) => [
@@ -266,23 +265,53 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
       <Navbar
         userEmail={userEmail}
         onSignOut={handleSignOut}
-        splitView={splitView}
-        onToggleSplitView={() => setSplitView(!splitView)}
+        splitView={false}
+        onToggleSplitView={() => {}}
         hasActiveResume={Boolean(structuredResume)}
       />
 
-      <main className="flex-1 max-w-[1700px] w-full mx-auto p-2 sm:p-4 flex flex-col gap-2 sm:gap-3 overflow-hidden min-h-0">
-        {/* 4 Agent Cards always visible */}
-        <div className="shrink-0">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto p-2 sm:p-4 flex flex-col gap-2.5 overflow-hidden min-h-0">
+        
+        {/* 1. Mobile Top Agents Banner (Only visible on mobile screens) */}
+        <div className="lg:hidden shrink-0">
           <AgentStatusCard
             findings={findings}
             activeAgentId={activeAgentId}
             isRunningPipeline={isProcessing}
+            isVerticalSidebar={false}
           />
         </div>
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0 overflow-hidden">
-          <div className={`${splitView ? 'lg:col-span-6 xl:col-span-5' : 'lg:col-span-12'} h-full min-h-0 transition-all duration-300`}>
+        {/* 2. Floating / Sticky "Ver Currículum" button when resume is ready */}
+        {structuredResume && (
+          <div className="shrink-0 flex items-center justify-between px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/30 shadow-lg animate-in fade-in duration-300">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-semibold text-emerald-300 font-mono">
+                Currículum Optimizado Disponible
+              </span>
+              {structuredResume.atsScore && (
+                <span className="hidden sm:inline text-[11px] text-slate-400 font-mono">
+                  (ATS Score: {structuredResume.atsScore.overall}%)
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={() => setIsPreviewOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Ver Vista Previa & Descargas</span>
+            </button>
+          </div>
+        )}
+
+        {/* 3. Main Workspace Grid: Wide Chat on Left, 4 Agents Vertical Panel on Right in Desktop */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3.5 min-h-0 overflow-hidden">
+          
+          {/* Main Wide Chat with Alex */}
+          <div className="lg:col-span-8 xl:col-span-9 h-full min-h-0 transition-all duration-300">
             <ChatInterface
               messages={messages}
               onSendMessage={handleSendMessage}
@@ -294,17 +323,52 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
             />
           </div>
 
-          {splitView && (
-            <div className="hidden lg:block lg:col-span-6 xl:col-span-7 h-full min-h-0 transition-all duration-300">
-              <ResumePreview
-                resume={structuredResume}
-                onDownload={handleDownload}
-                isDownloading={isDownloading}
+          {/* Desktop Right Sidebar: 4 Specialized Agents Panel */}
+          <div className="hidden lg:flex lg:col-span-4 xl:col-span-3 h-full min-h-0 flex-col bg-slate-950/80 rounded-2xl border border-slate-800/80 p-3 overflow-hidden shadow-xl">
+            <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 font-mono">
+                  Panel de Agentes IA
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-semibold">
+                4 Activos
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+              <AgentStatusCard
+                findings={findings}
+                activeAgentId={activeAgentId}
+                isRunningPipeline={isProcessing}
+                isVerticalSidebar={true}
               />
             </div>
-          )}
+
+            {/* Quick Preview trigger button in sidebar */}
+            {structuredResume && (
+              <button
+                onClick={() => setIsPreviewOpen(true)}
+                className="mt-3 w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0"
+              >
+                <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Abrir Vista Previa del CV</span>
+              </button>
+            )}
+          </div>
+
         </div>
       </main>
+
+      {/* Full Screen Resume Preview & Multi-Format Exporter Modal */}
+      <ResumePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        resume={structuredResume}
+        onDownload={handleDownload}
+        isDownloading={isDownloading}
+      />
     </div>
   )
 }

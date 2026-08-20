@@ -57,7 +57,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
       const scrollHeight = textareaRef.current.scrollHeight
-      textareaRef.current.style.height = `${Math.min(Math.max(scrollHeight, 44), 160)}px`
+      textareaRef.current.style.height = `${Math.min(Math.max(scrollHeight, 40), 160)}px`
     }
   }, [inputText])
 
@@ -92,7 +92,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const toggleRecording = () => {
     if (!recognitionRef.current) {
-      alert('Tu navegador no soporta dictado por voz directo. Puedes escribir normalmente.')
+      alert('Tu navegador móvil no tiene activado el dictado por voz directo. Puedes escribir normalmente.')
       return
     }
 
@@ -120,7 +120,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setAttachments([])
 
     if (textareaRef.current) {
-      textareaRef.current.style.height = '44px'
+      textareaRef.current.style.height = '40px'
     }
 
     await onSendMessage(textToSend, attachmentsToSend)
@@ -306,7 +306,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 2. QUICK ACTIONS (Fixed above composer) */}
+      {/* 2. QUICK ACTIONS (2 Buttons) */}
       <div className="p-2 sm:px-4 sm:py-2 bg-slate-950/95 border-t border-slate-900 grid grid-cols-2 gap-1.5 shrink-0 z-10">
         {quickPrompts.map((item, idx) => {
           const Icon = item.icon
@@ -349,7 +349,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       {/* 4. ANTIGRAVITY-STYLE EXPANDABLE COMPOSER (Textarea on top, 4 Action Buttons below) */}
       <div className="p-2 sm:p-3 bg-slate-950 border-t border-slate-800/80 shrink-0 z-10 sticky bottom-0">
-        <div className="bg-slate-900/90 rounded-2xl border border-slate-800 focus-within:border-emerald-500/60 focus-within:ring-1 focus-within:ring-emerald-500/40 transition-all p-2 flex flex-col gap-2">
+        <div className="bg-slate-900/95 rounded-2xl border border-slate-800 focus-within:border-emerald-500/60 focus-within:ring-1 focus-within:ring-emerald-500/40 transition-all p-2 flex flex-col gap-1.5 shadow-lg">
           
           {/* Hidden inputs */}
           <input
@@ -367,7 +367,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             className="hidden"
           />
 
-          {/* Auto-expanding Textarea (independent vertical scroll) */}
+          {/* Auto-expanding Textarea */}
           <textarea
             ref={textareaRef}
             value={inputText}
@@ -376,19 +376,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             rows={1}
             placeholder="Escribe a Alex o sube tu CV (PDF o Word)..."
             disabled={isProcessing}
-            className="w-full bg-transparent text-slate-100 placeholder-slate-500 resize-none text-xs sm:text-sm focus:outline-none custom-scrollbar max-h-[160px] min-h-[40px] px-1 py-1 leading-relaxed"
+            className="w-full bg-transparent text-slate-100 placeholder-slate-500 resize-none text-xs sm:text-sm focus:outline-none custom-scrollbar max-h-[160px] min-h-[38px] px-1.5 py-1 leading-relaxed"
           />
 
-          {/* Bottom Action Bar: 4 Buttons (Attach, Photo, Mic, Send) */}
-          <div className="flex items-center justify-between pt-1 border-t border-slate-800/50">
-            {/* Left 3 tool buttons */}
+          {/* Bottom Action Bar: [Doc] [Foto] ... [Micrófono] [Enviar] */}
+          <div className="flex items-center justify-between pt-1 border-t border-slate-800/60">
+            {/* Left: Attachments (Doc, Photo) */}
             <div className="flex items-center gap-1 sm:gap-1.5">
               {/* 1. Upload Doc */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading || isProcessing}
-                className="p-1.5 sm:p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors disabled:opacity-50 flex items-center gap-1 text-[11px]"
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors disabled:opacity-50 flex items-center gap-1 text-[11px] shrink-0"
                 title="Subir documento PDF o Word"
               >
                 {isUploading ? (
@@ -404,19 +404,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 type="button"
                 onClick={() => photoInputRef.current?.click()}
                 disabled={isUploading || isProcessing}
-                className="p-1.5 sm:p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors disabled:opacity-50 flex items-center gap-1 text-[11px]"
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors disabled:opacity-50 flex items-center gap-1 text-[11px] shrink-0"
                 title="Subir foto de perfil"
               >
                 <ImageIcon className="w-4 h-4" />
                 <span className="hidden sm:inline">Foto</span>
               </button>
+            </div>
 
-              {/* 3. Microphone */}
+            {/* Right: Microphone and Send Button SIDE BY SIDE */}
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {/* 3. Microphone Button (Directly next to send button) */}
               <button
                 type="button"
                 onClick={toggleRecording}
                 disabled={isProcessing}
-                className={`p-1.5 sm:p-2 rounded-xl transition-all flex items-center gap-1 text-[11px] ${
+                className={`p-2 rounded-xl transition-all flex items-center justify-center shrink-0 ${
                   isRecording
                     ? 'bg-red-500/20 border border-red-500/50 text-red-400 animate-pulse'
                     : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300'
@@ -424,21 +427,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 title={isRecording ? 'Detener dictado' : 'Dictar por voz'}
               >
                 {isRecording ? <MicOff className="w-4 h-4 text-red-400" /> : <Mic className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isRecording ? 'Grabando...' : 'Voz'}</span>
+              </button>
+
+              {/* 4. Send Button */}
+              <button
+                type="button"
+                onClick={() => handleSend()}
+                disabled={(!inputText.trim() && attachments.length === 0) || isProcessing}
+                className="p-2 sm:px-3 sm:py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all disabled:opacity-40 disabled:hover:bg-emerald-500 shadow-md shadow-emerald-500/20 flex items-center gap-1 text-xs shrink-0"
+                title="Enviar mensaje"
+              >
+                <span className="hidden sm:inline">Enviar</span>
+                <Send className="w-4 h-4" />
               </button>
             </div>
-
-            {/* 4. Send Button */}
-            <button
-              type="button"
-              onClick={() => handleSend()}
-              disabled={(!inputText.trim() && attachments.length === 0) || isProcessing}
-              className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all disabled:opacity-40 disabled:hover:bg-emerald-500 shadow-md shadow-emerald-500/20 flex items-center gap-1.5 text-xs shrink-0"
-              title="Enviar mensaje"
-            >
-              <span className="hidden sm:inline">Enviar</span>
-              <Send className="w-4 h-4" />
-            </button>
           </div>
 
         </div>
