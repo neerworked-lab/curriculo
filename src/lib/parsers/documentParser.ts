@@ -80,7 +80,7 @@ export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<{
       // Render Page 1 to canvas to extract profile photo snapshot if available
       if (pageNum === 1 && typeof document !== 'undefined') {
         try {
-          const viewport = page.getViewport({ scale: 1.0 })
+          const viewport = page.getViewport({ scale: 2.0 })
           const canvas = document.createElement('canvas')
           const context = canvas.getContext('2d')
           canvas.height = viewport.height
@@ -88,24 +88,24 @@ export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<{
 
           if (context) {
             await page.render({ canvasContext: context, viewport }).promise
-            // Crop top-left quadrant where CV photo is typically located
+            // Crop top-left portrait area where CV photo is located with generous framing
             const photoCanvas = document.createElement('canvas')
-            photoCanvas.width = 300
-            photoCanvas.height = 300
+            photoCanvas.width = 400
+            photoCanvas.height = 480
             const photoCtx = photoCanvas.getContext('2d')
             if (photoCtx) {
               photoCtx.drawImage(
                 canvas,
                 canvas.width * 0.05,
-                canvas.height * 0.05,
-                canvas.width * 0.35,
-                canvas.height * 0.3,
+                canvas.height * 0.04,
+                canvas.width * 0.32,
+                canvas.height * 0.30,
                 0,
                 0,
-                300,
-                300
+                400,
+                480
               )
-              photoUrl = photoCanvas.toDataURL('image/jpeg', 0.85)
+              photoUrl = photoCanvas.toDataURL('image/jpeg', 0.92)
             }
           }
         } catch (renderErr) {
