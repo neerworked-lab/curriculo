@@ -6,6 +6,7 @@ export interface AgentInfo {
   title?: string
   role: string
   roleDescription?: string
+  color?: string
   avatar: string
   description: string
   motto: string
