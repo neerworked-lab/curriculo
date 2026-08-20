@@ -1,13 +1,38 @@
 import pptxgen from 'pptxgenjs'
 import { StructuredResume } from '@/types'
 
-export async function generatePptxResume(resume: StructuredResume): Promise<Buffer> {
+export async function generatePptxResume(resume: StructuredResume): Promise<Uint8Array> {
   const pptx = new pptxgen()
   pptx.layout = 'LAYOUT_16x9'
 
+  const personalInfo = resume.personalInfo || {
+    fullName: 'Candidato Profesional',
+    title: 'Especialista',
+    email: '',
+    phone: '',
+    location: '',
+    summary: ''
+  }
+
+  const workExperience = Array.isArray(resume.workExperience) ? resume.workExperience : []
+
+  let technicalSkills: string[] = []
+  let toolsSkills: string[] = []
+  let softSkills: string[] = []
+  let languagesSkills: string[] = []
+
+  if (Array.isArray(resume.skills)) {
+    technicalSkills = resume.skills as any
+  } else if (resume.skills && typeof resume.skills === 'object') {
+    technicalSkills = Array.isArray(resume.skills.technical) ? resume.skills.technical : []
+    toolsSkills = Array.isArray(resume.skills.tools) ? resume.skills.tools : []
+    softSkills = Array.isArray(resume.skills.soft) ? resume.skills.soft : []
+    languagesSkills = Array.isArray(resume.skills.languages) ? resume.skills.languages : []
+  }
+
   // Slide 1: Executive Profile & Career Highlights
   const slide1 = pptx.addSlide()
-  slide1.background = { color: '0F172A' } // Dark luxury background
+  slide1.background = { color: '0F172A' }
 
   // Header Banner
   slide1.addShape(pptx.ShapeType.rect, {
@@ -20,7 +45,7 @@ export async function generatePptxResume(resume: StructuredResume): Promise<Buff
   })
 
   // Full Name & Title
-  slide1.addText(resume.personalInfo.fullName.toUpperCase(), {
+  slide1.addText((personalInfo.fullName || 'CANDIDATO').toUpperCase(), {
     x: 0.8,
     y: 0.65,
     w: 8.0,
@@ -31,7 +56,7 @@ export async function generatePptxResume(resume: StructuredResume): Promise<Buff
     fontFace: 'Arial'
   })
 
-  slide1.addText(resume.personalInfo.title, {
+  slide1.addText(personalInfo.title || '', {
     x: 0.8,
     y: 1.15,
     w: 8.0,
@@ -44,7 +69,7 @@ export async function generatePptxResume(resume: StructuredResume): Promise<Buff
 
   // Contact Info Badge
   slide1.addText(
-    `${resume.personalInfo.email} | ${resume.personalInfo.phone} | ${resume.personalInfo.location}`,
+    `${personalInfo.email || ''} | ${personalInfo.phone || ''} | ${personalInfo.location || ''}`,
     {
       x: 0.8,
       y: 1.5,
@@ -106,7 +131,7 @@ export async function generatePptxResume(resume: StructuredResume): Promise<Buff
     color: '38BDF8'
   })
 
-  slide1.addText(resume.personalInfo.summary, {
+  slide1.addText(personalInfo.summary || 'Perfil profesional de alto rendimiento.', {
     x: 0.7,
     y: 2.55,
     w: 4.1,
@@ -127,10 +152,10 @@ export async function generatePptxResume(resume: StructuredResume): Promise<Buff
   })
 
   const skillBullets = [
-    `• Técnicas: ${resume.skills.technical.slice(0, 5).join(', ')}`,
-    `• Herramientas: ${resume.skills.tools.slice(0, 5).join(', ')}`,
-    `• Liderazgo: ${resume.skills.soft.slice(0, 4).join(', ')}`,
-    `• Idiomas: ${resume.skills.languages.join(', ')}`
+    `• Técnicas: ${technicalSkills.slice(0, 5).join(', ')}`,
+    `• Herramientas: ${toolsSkills.slice(0, 5).join(', ')}`,
+    `• Liderazgo: ${softSkills.slice(0, 4).join(', ')}`,
+    `• Idiomas: ${languagesSkills.join(', ')}`
   ].join('\n\n')
 
   slide1.addText(skillBullets, {
@@ -142,7 +167,7 @@ export async function generatePptxResume(resume: StructuredResume): Promise<Buff
     color: 'CBD5E1'
   })
 
-  // Right Column: Experience & Achievements (STAR)
+  // Right Column: Experience & Achievements
   slide1.addShape(pptx.ShapeType.roundRect, {
     x: 5.2,
     y: 2.1,
@@ -163,8 +188,8 @@ export async function generatePptxResume(resume: StructuredResume): Promise<Buff
   })
 
   let currentY = 2.6
-  resume.workExperience.slice(0, 3).forEach((exp) => {
-    slide1.addText(`${exp.role} — ${exp.company} (${exp.startDate} - ${exp.current ? 'Presente' : exp.endDate})`, {
+  workExperience.slice(0, 3).forEach((exp) => {
+    slide1.addText(`${exp.role || 'Rol'} — ${exp.company || ''} (${exp.startDate || ''} - ${exp.current ? 'Presente' : exp.endDate || ''})`, {
       x: 5.4,
       y: currentY,
       w: 7.2,
@@ -175,20 +200,22 @@ export async function generatePptxResume(resume: StructuredResume): Promise<Buff
     })
     currentY += 0.28
 
-    exp.achievements.slice(0, 2).forEach((ach) => {
-      slide1.addText(`• ${ach}`, {
-        x: 5.6,
-        y: currentY,
-        w: 7.0,
-        h: 0.38,
-        fontSize: 9.5,
-        color: '94A3B8'
+    if (Array.isArray(exp.achievements)) {
+      exp.achievements.slice(0, 2).forEach((ach) => {
+        slide1.addText(`• ${ach}`, {
+          x: 5.6,
+          y: currentY,
+          w: 7.0,
+          h: 0.38,
+          fontSize: 9.5,
+          color: '94A3B8'
+        })
+        currentY += 0.4
       })
-      currentY += 0.4
-    })
+    }
     currentY += 0.1
   })
 
   const arrayBuffer = (await pptx.write({ outputType: 'arraybuffer' })) as ArrayBuffer
-  return Buffer.from(arrayBuffer)
+  return new Uint8Array(arrayBuffer)
 }

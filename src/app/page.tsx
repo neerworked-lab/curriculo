@@ -12,7 +12,7 @@ import { generateDocxResume } from '@/lib/exporters/wordExporter'
 import { generatePptxResume } from '@/lib/exporters/pptxExporter'
 import { generatePdfResume } from '@/lib/exporters/pdfExporter'
 import { parseUploadedFile } from '@/lib/parsers/documentParser'
-import { Eye, FileText, Sparkles, ShieldCheck } from 'lucide-react'
+import { Eye, Sparkles } from 'lucide-react'
 
 export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -24,7 +24,7 @@ export default function Home() {
       sender: 'orchestrator',
       text: `¡Hola! Soy **Alex**, tu asesor y agente de IA para la creación y optimización de tu Currículum Vitae.
 
-Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfil, o simplemente contarme tus objetivos profesionales para comenzar. ¿En qué te puedo ayudar hoy?`,
+Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escribirme tus metas para comenzar. ¿En qué te puedo ayudar hoy?`,
       timestamp: new Date().toISOString()
     }
   ])
@@ -56,17 +56,10 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
     localStorage.removeItem('user_session_email')
   }
 
-  // Upload parser handler
+  // Upload parser handler: Only parse and attach, do NOT auto-trigger pipeline
   const handleUploadFile = async (file: File): Promise<Attachment | null> => {
     try {
       const parsed = await parseUploadedFile(file)
-
-      if (parsed.fileType === 'pdf' || parsed.fileType === 'docx' || (parsed.fileType === 'text' && parsed.text)) {
-        setTimeout(() => {
-          handleTriggerPipeline(parsed.text, undefined, parsed.photoUrl)
-        }, 300)
-      }
-
       return {
         name: file.name,
         type: parsed.fileType,
@@ -81,7 +74,12 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
   }
 
   // Complete 4-Agent Pipeline Execution
-  const handleTriggerPipeline = async (rawText: string, targetRole?: string, photoUrl?: string) => {
+  const handleTriggerPipeline = async (
+    rawText: string,
+    targetRole?: string,
+    photoUrl?: string,
+    userInstructions?: string
+  ) => {
     setIsProcessing(true)
     setActiveAgentId('diagnoser')
 
@@ -91,18 +89,22 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
       {
         id: pipelineMsgId,
         sender: 'orchestrator',
-        text: `⏳ He recibido tu currículum. Activando el panel de agentes en cascada:
-1. 🔍 **The Diagnoser** está escaneando la estructura y calculando el Score ATS...
-2. 🎯 **The Recruiter** está analizando el filtro de 6 segundos y keywords...
-3. 💼 **The Hiring Manager** está cuantificando logros bajo el formato Google XYZ...
-4. ✍️ **The Rewriter** está puliendo la redacción final...`,
+        text: `⏳ Documentos recibidos. Activando el panel de 4 agentes especialistas:
+1. 🔍 **The Diagnoser:** Auditando estructura y calculando Score ATS...
+2. 🎯 **The Recruiter:** Analizando impacto en los primeros 6 segundos y keywords...
+3. 💼 **The Hiring Manager:** Reformulando logros bajo fórmula Google XYZ...
+4. ✍️ **The Rewriter:** Generando versión ejecutiva final...`,
         timestamp: new Date().toISOString()
       }
     ])
 
     try {
+      const combinedText = userInstructions
+        ? `[INSTRUCCIONES DEL USUARIO]:\n${userInstructions}\n\n[DOCUMENTOS ADJUNTOS]:\n${rawText}`
+        : rawText
+
       const result = await runCompleteAgentPipeline({
-        resumeRawText: rawText,
+        resumeRawText: combinedText,
         targetRole,
         photoUrl
       })
@@ -137,7 +139,7 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
     }
   }
 
-  // Conversational Chat with Orchestrator
+  // Conversational Chat & Submission handler
   const handleSendMessage = async (text: string, attachments?: Attachment[]) => {
     if (!text && (!attachments || attachments.length === 0)) return
 
@@ -150,20 +152,28 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
     }
 
     setMessages((prev) => [...prev, userMsg])
-    setIsProcessing(true)
 
-    let extractedText: string | undefined = undefined
+    // Collect all attached documents
+    let extractedDocText = ''
     let photoUrl: string | undefined = undefined
 
     attachments?.forEach((att) => {
       if (att.content && att.type !== 'image') {
-        extractedText = (extractedText ? extractedText + '\n\n' : '') + att.content
+        extractedDocText += `\n--- Archivo: ${att.name} ---\n${att.content}\n`
       }
       if (att.type === 'image' && att.url) {
         photoUrl = att.url
       }
     })
 
+    // If documents are attached, trigger complete 4-agent transformation
+    if (extractedDocText.trim().length > 10) {
+      await handleTriggerPipeline(extractedDocText, undefined, photoUrl, text)
+      return
+    }
+
+    // Standard conversational interaction with Alex
+    setIsProcessing(true)
     try {
       const historyForApi = [...messages, userMsg].map((m) => ({
         role: m.sender === 'user' ? ('user' as const) : ('model' as const),
@@ -172,7 +182,7 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
 
       const data = await runOrchestratorChat({
         messages: historyForApi,
-        extractedFileContent: extractedText,
+        extractedFileContent: extractedDocText || undefined,
         photoUrl
       })
 
@@ -213,24 +223,24 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
       let blob: Blob
 
       if (format === 'docx') {
-        const buffer = await generateDocxResume(structuredResume)
-        blob = new Blob([new Uint8Array(buffer)], {
+        const uint8 = await generateDocxResume(structuredResume)
+        blob = new Blob([uint8 as any], {
           type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         })
       } else if (format === 'pptx') {
-        const buffer = await generatePptxResume(structuredResume)
-        blob = new Blob([new Uint8Array(buffer)], {
+        const uint8 = await generatePptxResume(structuredResume)
+        blob = new Blob([uint8 as any], {
           type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
         })
       } else {
-        const buffer = generatePdfResume(structuredResume)
-        blob = new Blob([new Uint8Array(buffer)], { type: 'application/pdf' })
+        const uint8 = generatePdfResume(structuredResume)
+        blob = new Blob([uint8 as any], { type: 'application/pdf' })
       }
 
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const safeName = (structuredResume.personalInfo.fullName || 'curriculum')
+      const safeName = (structuredResume.personalInfo?.fullName || 'curriculum')
         .toLowerCase()
         .replace(/\s+/g, '_')
       a.download = `${safeName}_resume.${format}`
@@ -245,7 +255,6 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
     }
   }
 
-  // Prevent flash while checking auth
   if (isAuthChecking) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -254,12 +263,10 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
     )
   }
 
-  // Auth Gate: If user is not logged in, show AuthScreen
   if (!userEmail) {
     return <AuthScreen onLoginSuccess={handleLoginSuccess} />
   }
 
-  // Main Studio Application
   return (
     <div className="h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 overflow-hidden">
       <Navbar
@@ -282,7 +289,7 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
           />
         </div>
 
-        {/* 2. Floating / Sticky "Ver Currículum" button when resume is ready */}
+        {/* 2. Floating "Ver Currículum" button when resume is ready */}
         {structuredResume && (
           <div className="shrink-0 flex items-center justify-between px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/30 shadow-lg animate-in fade-in duration-300">
             <div className="flex items-center gap-2">
@@ -307,7 +314,7 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
           </div>
         )}
 
-        {/* 3. Main Workspace Grid: Wide Chat on Left, 4 Agents Vertical Panel on Right in Desktop */}
+        {/* 3. Main Workspace Grid */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3.5 min-h-0 overflow-hidden">
           
           {/* Main Wide Chat with Alex */}
@@ -346,7 +353,6 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
               />
             </div>
 
-            {/* Quick Preview trigger button in sidebar */}
             {structuredResume && (
               <button
                 onClick={() => setIsPreviewOpen(true)}
@@ -361,7 +367,7 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
         </div>
       </main>
 
-      {/* Full Screen Resume Preview & Multi-Format Exporter Modal */}
+      {/* Full Screen Resume Preview & Exporter Modal */}
       <ResumePreviewModal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
