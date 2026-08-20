@@ -4,6 +4,14 @@ import { generatePptxResume } from '@/lib/exporters/pptxExporter'
 import { generatePdfResume } from '@/lib/exporters/pdfExporter'
 import { StructuredResume } from '@/types'
 
+export function generateStaticParams() {
+  return [
+    { format: 'pdf' },
+    { format: 'docx' },
+    { format: 'pptx' }
+  ]
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ format: string }> }
