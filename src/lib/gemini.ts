@@ -9,10 +9,11 @@ import {
 import { StructuredResume, AgentFinding } from '@/types'
 
 function getGeminiClient(customApiKey?: string) {
-  const apiKey = customApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || ''
-  if (!apiKey) {
-    throw new Error('No se encontró la API Key de Google Gemini. Configura GEMINI_API_KEY o proporciónala en los ajustes.')
-  }
+  const apiKey =
+    customApiKey ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+    'AIzaSyBJGIJXamG5y10nOz7nGTnLTek-0Ew4l-Y'
   return new GoogleGenerativeAI(apiKey)
 }
 

@@ -1,14 +1,11 @@
 'use client'
 
 import React from 'react'
-import { Sparkles, FileText, Settings, LogIn, LogOut, User, Layout, Eye, Cpu } from 'lucide-react'
+import { Sparkles, Layout, LogOut, Cpu, ShieldCheck } from 'lucide-react'
 
 interface NavbarProps {
-  userEmail?: string | null
-  onOpenAuth: () => void
+  userEmail: string
   onSignOut: () => void
-  onOpenSettings: () => void
-  hasApiKey: boolean
   splitView: boolean
   onToggleSplitView: () => void
   hasActiveResume: boolean
@@ -16,10 +13,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   userEmail,
-  onOpenAuth,
   onSignOut,
-  onOpenSettings,
-  hasApiKey,
   splitView,
   onToggleSplitView,
   hasActiveResume
@@ -65,50 +59,31 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
       </div>
 
-      {/* Right Controls: Settings, Gemini Status & Auth */}
+      {/* Right Controls: AI Engine status & User Account */}
       <div className="flex items-center gap-3">
-        {/* Gemini Engine status */}
-        <button
-          onClick={onOpenSettings}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors border ${
-            hasApiKey
-              ? 'bg-slate-900/90 border-slate-800 text-slate-300 hover:border-slate-700'
-              : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
-          }`}
-        >
+        {/* Gemini Active Badge */}
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono">
           <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="hidden sm:inline font-mono text-[11px]">
-            {hasApiKey ? 'Gemini 2.0' : 'Configurar API'}
-          </span>
-          <Settings className="w-3 h-3 text-slate-400 ml-0.5" />
-        </button>
+          <span>Gemini Pro Active</span>
+        </div>
 
-        {/* User Account */}
-        {userEmail ? (
-          <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-            <div className="w-7 h-7 rounded-full bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-xs font-semibold text-emerald-300">
-              {userEmail.charAt(0).toUpperCase()}
-            </div>
-            <span className="text-xs text-slate-300 hidden md:inline max-w-[120px] truncate">
-              {userEmail}
-            </span>
-            <button
-              onClick={onSignOut}
-              className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-red-400 transition-colors"
-              title="Cerrar sesión"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
+        {/* User Account with Sign Out */}
+        <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+          <div className="w-7 h-7 rounded-full bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-xs font-semibold text-emerald-300">
+            {userEmail.charAt(0).toUpperCase()}
           </div>
-        ) : (
+          <span className="text-xs text-slate-300 hidden md:inline max-w-[140px] truncate">
+            {userEmail}
+          </span>
           <button
-            onClick={onOpenAuth}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs transition-all shadow-md shadow-emerald-500/20"
+            onClick={onSignOut}
+            className="flex items-center gap-1 p-1.5 px-2 rounded-lg bg-slate-900 hover:bg-red-500/10 border border-slate-800 hover:border-red-500/30 text-slate-400 hover:text-red-400 text-xs transition-colors"
+            title="Cerrar sesión"
           >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>Ingresar</span>
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Salir</span>
           </button>
-        )}
+        </div>
       </div>
     </header>
   )

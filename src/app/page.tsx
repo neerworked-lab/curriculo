@@ -5,8 +5,7 @@ import { Navbar } from '@/components/Navbar'
 import { AgentStatusCard } from '@/components/AgentStatusCard'
 import { ChatInterface } from '@/components/ChatInterface'
 import { ResumePreview } from '@/components/ResumePreview'
-import { SettingsModal } from '@/components/SettingsModal'
-import { AuthModal } from '@/components/AuthModal'
+import { AuthScreen } from '@/components/AuthScreen'
 import { ChatMessage, Attachment, StructuredResume, AgentFinding, AgentId } from '@/types'
 import { runOrchestratorChat, runCompleteAgentPipeline } from '@/lib/gemini'
 import { generateDocxResume } from '@/lib/exporters/wordExporter'
@@ -15,6 +14,9 @@ import { generatePdfResume } from '@/lib/exporters/pdfExporter'
 import { parseUploadedFile } from '@/lib/parsers/documentParser'
 
 export default function Home() {
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [isAuthChecking, setIsAuthChecking] = useState(true)
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome-1',
@@ -39,23 +41,13 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
   const [isDownloading, setIsDownloading] = useState(false)
   const [splitView, setSplitView] = useState(true)
 
-  // Auth & Settings State
-  const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [isAuthOpen, setIsAuthOpen] = useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [apiKey, setApiKey] = useState<string>('')
-
   useEffect(() => {
-    const savedKey = localStorage.getItem('gemini_custom_key') || ''
     const savedEmail = localStorage.getItem('user_session_email') || null
-    if (savedKey) setApiKey(savedKey)
-    if (savedEmail) setUserEmail(savedEmail)
+    if (savedEmail) {
+      setUserEmail(savedEmail)
+    }
+    setIsAuthChecking(false)
   }, [])
-
-  const handleSaveApiKey = (key: string) => {
-    setApiKey(key)
-    localStorage.setItem('gemini_custom_key', key)
-  }
 
   const handleLoginSuccess = (email: string) => {
     setUserEmail(email)
@@ -67,28 +59,10 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
     localStorage.removeItem('user_session_email')
   }
 
-  // Upload parser handler (supports both API route & direct client-side parsing)
+  // Upload parser handler
   const handleUploadFile = async (file: File): Promise<Attachment | null> => {
     try {
-      let parsed: { text: string; fileType: 'pdf' | 'docx' | 'image' | 'text'; photoUrl?: string }
-
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        const res = await fetch('/api/upload', { method: 'POST', body: formData })
-        if (res.ok) {
-          const data = await res.json()
-          parsed = {
-            text: data.text,
-            fileType: data.fileType,
-            photoUrl: data.photoUrl
-          }
-        } else {
-          throw new Error('API route not available, falling back to client parser')
-        }
-      } catch {
-        parsed = await parseUploadedFile(file)
-      }
+      const parsed = await parseUploadedFile(file)
 
       if (parsed.fileType === 'pdf' || parsed.fileType === 'docx' || (parsed.fileType === 'text' && parsed.text)) {
         setTimeout(() => {
@@ -130,32 +104,11 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
     ])
 
     try {
-      let result: any = null
-
-      try {
-        const res = await fetch('/api/pipeline', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            resumeRawText: rawText,
-            targetRole,
-            userApiKey: apiKey,
-            photoUrl
-          })
-        })
-        if (res.ok) {
-          result = await res.json()
-        } else {
-          throw new Error('API fallback')
-        }
-      } catch {
-        result = await runCompleteAgentPipeline({
-          resumeRawText: rawText,
-          targetRole,
-          userApiKey: apiKey,
-          photoUrl
-        })
-      }
+      const result = await runCompleteAgentPipeline({
+        resumeRawText: rawText,
+        targetRole,
+        photoUrl
+      })
 
       setFindings(result.findings)
       setStructuredResume(result.finalResume)
@@ -178,7 +131,7 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
         {
           id: `err-${Date.now()}`,
           sender: 'orchestrator',
-          text: `⚠️ Error al conectar con los agentes: ${err.message}. Asegúrate de ingresar tu API Key de Gemini en el botón de Configuración en la barra superior.`,
+          text: `⚠️ Error al procesar con los agentes: ${err.message}`,
           timestamp: new Date().toISOString()
         }
       ])
@@ -221,32 +174,11 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
         parts: m.text
       }))
 
-      let data: any = null
-
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: historyForApi,
-            userApiKey: apiKey,
-            extractedFileContent: extractedText,
-            photoUrl
-          })
-        })
-        if (res.ok) {
-          data = await res.json()
-        } else {
-          throw new Error('API fallback')
-        }
-      } catch {
-        data = await runOrchestratorChat({
-          messages: historyForApi,
-          userApiKey: apiKey,
-          extractedFileContent: extractedText,
-          photoUrl
-        })
-      }
+      const data = await runOrchestratorChat({
+        messages: historyForApi,
+        extractedFileContent: extractedText,
+        photoUrl
+      })
 
       if (data.structuredResume) {
         setStructuredResume(data.structuredResume)
@@ -269,7 +201,7 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
         {
           id: `err-${Date.now()}`,
           sender: 'orchestrator',
-          text: `⚠️ No pude conectar con Gemini: ${err.message}. Configura tu API Key en la barra superior.`,
+          text: `⚠️ Hubo un detalle de comunicación con la IA: ${err.message}`,
           timestamp: new Date().toISOString()
         }
       ])
@@ -287,10 +219,14 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
 
       if (format === 'docx') {
         const buffer = await generateDocxResume(structuredResume)
-        blob = new Blob([new Uint8Array(buffer)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+        blob = new Blob([new Uint8Array(buffer)], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        })
       } else if (format === 'pptx') {
         const buffer = await generatePptxResume(structuredResume)
-        blob = new Blob([new Uint8Array(buffer)], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' })
+        blob = new Blob([new Uint8Array(buffer)], {
+          type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        })
       } else {
         const buffer = generatePdfResume(structuredResume)
         blob = new Blob([new Uint8Array(buffer)], { type: 'application/pdf' })
@@ -314,14 +250,26 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
     }
   }
 
+  // Prevent flash while checking auth
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+      </div>
+    )
+  }
+
+  // Auth Gate: If user is not logged in, show AuthScreen
+  if (!userEmail) {
+    return <AuthScreen onLoginSuccess={handleLoginSuccess} />
+  }
+
+  // Main Studio Application
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
       <Navbar
         userEmail={userEmail}
-        onOpenAuth={() => setIsAuthOpen(true)}
         onSignOut={handleSignOut}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        hasApiKey={Boolean(apiKey || process.env.NEXT_PUBLIC_GEMINI_ACTIVE)}
         splitView={splitView}
         onToggleSplitView={() => setSplitView(!splitView)}
         hasActiveResume={Boolean(structuredResume)}
@@ -358,19 +306,6 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
           )}
         </div>
       </main>
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        apiKey={apiKey}
-        onSaveApiKey={handleSaveApiKey}
-      />
-
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
     </div>
   )
 }
