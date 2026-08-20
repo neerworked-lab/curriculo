@@ -187,7 +187,10 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 
       {/* Main Sheet Container */}
       <div className="flex-1 overflow-y-auto p-2 sm:p-6 custom-scrollbar bg-slate-950">
-        <div className="max-w-[820px] mx-auto bg-white text-slate-900 rounded-xl shadow-2xl border border-slate-200 overflow-hidden text-left">
+        <div
+          id="resume-printable-sheet"
+          className="max-w-[820px] mx-auto bg-white text-slate-900 rounded-xl shadow-2xl border border-slate-200 overflow-hidden text-left"
+        >
           
           {/* TEMPLATE 0: ORIGINAL SIDEBAR REPLICA (2 Columns like user's uploaded CV) */}
           {selectedTemplate === 'original_sidebar' && (
@@ -196,14 +199,14 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
               {/* Left Column (Sage Green / Gray Sidebar) */}
               <div className="md:col-span-4 bg-[#DCE4DF] p-5 sm:p-6 border-r border-[#C7D4CC] flex flex-col gap-5 text-slate-800">
                 
-                {/* Profile Photo */}
+                {/* Profile Photo - Proportional & Centered */}
                 <div className="w-full flex justify-center">
-                  <div className="w-32 h-36 sm:w-36 sm:h-40 rounded-xl overflow-hidden border-2 border-white shadow-md bg-slate-200">
+                  <div className="w-36 h-44 sm:w-40 sm:h-48 rounded-xl overflow-hidden border-2 border-white shadow-md bg-slate-200 flex items-center justify-center">
                     {personalInfo.photoUrl ? (
                       <img
                         src={personalInfo.photoUrl}
                         alt={personalInfo.fullName}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover object-center"
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100">
