@@ -230,9 +230,38 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
       return
     }
 
-    // Standard interactive conversation with Alex
+    // If user explicitly asks to redesign, re-process, or update layout, trigger agent visual loop
+    const lowerText = text.toLowerCase()
+    const isRedesignRequest =
+      lowerText.includes('rediseña') ||
+      lowerText.includes('rediseñar') ||
+      lowerText.includes('canva') ||
+      lowerText.includes('diseño') ||
+      lowerText.includes('plantilla') ||
+      lowerText.includes('original')
+
     setIsProcessing(true)
+
     try {
+      if (isRedesignRequest) {
+        // Visual steps for agents
+        setActiveAgentId('diagnoser')
+        setActiveAgentStatusText('Auditando compatibilidad de diseño...')
+        await new Promise((r) => setTimeout(r, 800))
+
+        setActiveAgentId('recruiter')
+        setActiveAgentStatusText('Alineando legibilidad visual nivel Canva Pro...')
+        await new Promise((r) => setTimeout(r, 800))
+
+        setActiveAgentId('hiring_manager')
+        setActiveAgentStatusText('Validando impacto y métricas de liderazgo...')
+        await new Promise((r) => setTimeout(r, 800))
+
+        setActiveAgentId('rewriter')
+        setActiveAgentStatusText('Maquetando plantilla Canva Pro y aplicando mejoras...')
+        await new Promise((r) => setTimeout(r, 800))
+      }
+
       const historyForApi = [...messages, userMsg].map((m) => ({
         role: m.sender === 'user' ? ('user' as const) : ('model' as const),
         parts: m.text
@@ -265,12 +294,14 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
         {
           id: `err-${Date.now()}`,
           sender: 'orchestrator',
-          text: `⚠️ Detalle de comunicación: ${err.message}`,
+          text: `⚠️ Detalle: ${err.message}`,
           timestamp: new Date().toISOString()
         }
       ])
     } finally {
       setIsProcessing(false)
+      setActiveAgentId(null)
+      setActiveAgentStatusText('')
     }
   }
 
