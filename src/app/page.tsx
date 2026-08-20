@@ -230,37 +230,29 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
       return
     }
 
-    // If user explicitly asks to redesign, re-process, or update layout, trigger agent visual loop
-    const lowerText = text.toLowerCase()
-    const isRedesignRequest =
-      lowerText.includes('rediseña') ||
-      lowerText.includes('rediseñar') ||
-      lowerText.includes('canva') ||
-      lowerText.includes('diseño') ||
-      lowerText.includes('plantilla') ||
-      lowerText.includes('original')
-
+    // Complete 4-Agent Transformation Sequence
     setIsProcessing(true)
 
     try {
-      if (isRedesignRequest) {
-        // Visual steps for agents
-        setActiveAgentId('diagnoser')
-        setActiveAgentStatusText('Auditando compatibilidad de diseño...')
-        await new Promise((r) => setTimeout(r, 800))
+      // 1. The Diagnoser (2.8s realistic audit)
+      setActiveAgentId('diagnoser')
+      setActiveAgentStatusText('Auditando compatibilidad ATS y estructura original...')
+      await new Promise((r) => setTimeout(r, 2600))
 
-        setActiveAgentId('recruiter')
-        setActiveAgentStatusText('Alineando legibilidad visual nivel Canva Pro...')
-        await new Promise((r) => setTimeout(r, 800))
+      // 2. The Recruiter (2.8s visual hierarchy audit)
+      setActiveAgentId('recruiter')
+      setActiveAgentStatusText('Optimizando impacto visual en 6 segundos y densidad de palabras clave...')
+      await new Promise((r) => setTimeout(r, 2600))
 
-        setActiveAgentId('hiring_manager')
-        setActiveAgentStatusText('Validando impacto y métricas de liderazgo...')
-        await new Promise((r) => setTimeout(r, 800))
+      // 3. The Hiring Manager (2.8s STAR metrics)
+      setActiveAgentId('hiring_manager')
+      setActiveAgentStatusText('Cuantificando responsabilidades y liderazgo bajo Google XYZ...')
+      await new Promise((r) => setTimeout(r, 2600))
 
-        setActiveAgentId('rewriter')
-        setActiveAgentStatusText('Maquetando plantilla Canva Pro y aplicando mejoras...')
-        await new Promise((r) => setTimeout(r, 800))
-      }
+      // 4. The Rewriter (2.8s Canva Pro drafting)
+      setActiveAgentId('rewriter')
+      setActiveAgentStatusText('Maquetando plantilla Canva Pro en 2 columnas y puliendo la redacción...')
+      await new Promise((r) => setTimeout(r, 2600))
 
       const historyForApi = [...messages, userMsg].map((m) => ({
         role: m.sender === 'user' ? ('user' as const) : ('model' as const),

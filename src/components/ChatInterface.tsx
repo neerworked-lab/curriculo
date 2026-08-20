@@ -61,28 +61,41 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [inputText])
 
-  // Speech to text initialization
+  const isRecordingRef = useRef(false)
+
+  // Speech to text initialization (Continuous mode like Antigravity)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition()
-        recognition.continuous = false
-        recognition.interimResults = false
+        recognition.continuous = true
+        recognition.interimResults = true
         recognition.lang = 'es-ES'
 
         recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript
-          setInputText((prev) => (prev ? `${prev} ${transcript}` : transcript))
-          setIsRecording(false)
+          let currentTranscript = ''
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+              const text = event.results[i][0].transcript
+              setInputText((prev) => (prev ? `${prev} ${text}` : text))
+            }
+          }
         }
 
-        recognition.onerror = () => {
-          setIsRecording(false)
+        recognition.onerror = (err: any) => {
+          console.warn('Speech recognition notice:', err)
         }
 
         recognition.onend = () => {
-          setIsRecording(false)
+          // If the user hasn't explicitly stopped recording, auto-restart continuous listening
+          if (isRecordingRef.current) {
+            try {
+              recognition.start()
+            } catch {}
+          } else {
+            setIsRecording(false)
+          }
         }
 
         recognitionRef.current = recognition
@@ -92,18 +105,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const toggleRecording = () => {
     if (!recognitionRef.current) {
-      alert('Tu navegador móvil no tiene activado el dictado por voz directo. Puedes escribir normalmente.')
+      alert('Tu navegador no tiene activado el dictado por voz directo. Puedes escribir normalmente.')
       return
     }
 
     if (isRecording) {
+      isRecordingRef.current = false
       recognitionRef.current.stop()
       setIsRecording(false)
     } else {
       try {
+        isRecordingRef.current = true
         recognitionRef.current.start()
         setIsRecording(true)
       } catch {
+        isRecordingRef.current = false
         setIsRecording(false)
       }
     }
@@ -112,6 +128,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if ((!inputText.trim() && attachments.length === 0) || isProcessing) return
+
+    // Stop recording if active when sending
+    if (isRecording && recognitionRef.current) {
+      isRecordingRef.current = false
+      recognitionRef.current.stop()
+      setIsRecording(false)
+    }
 
     const textToSend = inputText
     const attachmentsToSend = [...attachments]
