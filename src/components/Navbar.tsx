@@ -27,12 +27,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-base tracking-tight text-white">Resume Studio</span>
+            <span className="font-bold text-base tracking-tight text-white">Currículum Vitae</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-medium">
-              4-AGENT AI
+              CUATRO AGENTES IA
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 hidden sm:block">Orchestrated Career Architecture</p>
+          <p className="text-[11px] text-slate-400 hidden sm:block">Arquitectura Profesional de Carrera</p>
         </div>
       </div>
 

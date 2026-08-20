@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Resume Studio · 4-Agent AI Career Architect',
+  title: 'Currículum Vitae · Cuatro Agentes IA',
   description: 'Crea, audita y optimiza tu currículum vitae con 4 agentes especializados (The Diagnoser, The Recruiter, The Hiring Manager, The Rewriter) y The Orchestrator con Google Gemini.'
 }
 

@@ -86,8 +86,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-bold text-base tracking-tight text-white">Resume Studio</h1>
-            <p className="text-[11px] text-slate-400 font-mono">4-AGENT AI ARCHITECT</p>
+            <h1 className="font-bold text-base tracking-tight text-white">Currículum Vitae</h1>
+            <p className="text-[11px] text-emerald-400 font-mono font-medium">CUATRO AGENTES IA</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-[11px] text-emerald-400 font-mono">
