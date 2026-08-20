@@ -277,35 +277,42 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   </div>
                 )}
 
-                {/* Text Content */}
-                <div className="whitespace-pre-wrap space-y-2 text-xs sm:text-sm">
-                  {msg.text.replace(/```json\s*(?:structured_resume)?[\s\S]*?```/g, '').trim()}
+                {/* Text Content - 100% Cleaned of any JSON */}
+                <div className="whitespace-pre-wrap space-y-2 text-xs sm:text-sm text-slate-100">
+                  {msg.text
+                    .replace(/```json[\s\S]*?```/gi, '')
+                    .replace(/```[\s\S]*?```/gi, '')
+                    .replace(/\{[\s\S]*"personalInfo"[\s\S]*\}/gi, '')
+                    .replace(/"photoUrl":\s*"[^"]*",?/gi, '')
+                    .trim() || '¡He actualizado tu currículum! Puedes revisarlo en la vista previa a continuación.'}
                 </div>
 
-                {/* Quick Action Download Box if structured resume is attached */}
+                {/* Interactive Preview & Download Banner inside message */}
                 {msg.structuredResume && (
-                  <div className="mt-3 pt-2.5 border-t border-slate-700/80 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-400 block w-full mb-0.5">
-                      📥 Descargas directas disponibles:
-                    </span>
-                    <button
-                      onClick={() => onQuickDownload('pdf')}
-                      className="px-2 py-1 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-medium flex items-center gap-1 transition-colors"
-                    >
-                      <Download className="w-3 h-3" /> PDF
-                    </button>
-                    <button
-                      onClick={() => onQuickDownload('docx')}
-                      className="px-2 py-1 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-[11px] font-medium flex items-center gap-1 transition-colors"
-                    >
-                      <Download className="w-3 h-3" /> Word (.docx)
-                    </button>
-                    <button
-                      onClick={() => onQuickDownload('pptx')}
-                      className="px-2 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-medium flex items-center gap-1 transition-colors"
-                    >
-                      <Download className="w-3 h-3" /> PPTX
-                    </button>
+                  <div className="mt-3 pt-3 border-t border-slate-800/90 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60 p-2.5 rounded-xl border">
+                    <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Currículum Listo en Vista Previa</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => onQuickDownload('pdf')}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1 transition-all shadow-sm"
+                        title="Descargar PDF directo"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>PDF</span>
+                      </button>
+                      <button
+                        onClick={() => onQuickDownload('docx')}
+                        className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1 transition-all shadow-sm"
+                        title="Descargar Word directo"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Word</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
