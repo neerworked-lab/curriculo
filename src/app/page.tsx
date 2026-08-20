@@ -223,18 +223,15 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
       let blob: Blob
 
       if (format === 'docx') {
-        const uint8 = await generateDocxResume(structuredResume)
-        blob = new Blob([uint8 as any], {
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        })
+        blob = await generateDocxResume(structuredResume)
       } else if (format === 'pptx') {
         const uint8 = await generatePptxResume(structuredResume)
-        blob = new Blob([uint8 as any], {
+        blob = new Blob([uint8], {
           type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
         })
       } else {
         const uint8 = generatePdfResume(structuredResume)
-        blob = new Blob([uint8 as any], { type: 'application/pdf' })
+        blob = new Blob([uint8], { type: 'application/pdf' })
       }
 
       const url = window.URL.createObjectURL(blob)

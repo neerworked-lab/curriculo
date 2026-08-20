@@ -9,7 +9,7 @@ import {
 } from 'docx'
 import { StructuredResume } from '@/types'
 
-export async function generateDocxResume(resume: StructuredResume): Promise<Uint8Array> {
+export async function generateDocxResume(resume: StructuredResume): Promise<Blob> {
   const personalInfo = resume.personalInfo || {
     fullName: 'Candidato Profesional',
     title: 'Especialista',
@@ -285,5 +285,5 @@ export async function generateDocxResume(resume: StructuredResume): Promise<Uint
     ]
   })
 
-  return await Packer.toUint8Array(doc)
+  return await Packer.toBlob(doc)
 }
