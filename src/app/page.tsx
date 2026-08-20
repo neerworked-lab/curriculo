@@ -36,19 +36,53 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
   const [isDownloading, setIsDownloading] = useState(false)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
+  // Multi-device persistence restore on initial load
   useEffect(() => {
     const savedEmail = localStorage.getItem('user_session_email') || null
     if (savedEmail) {
       setUserEmail(savedEmail)
+      const savedSession = localStorage.getItem(`curriculo_session_${savedEmail}`)
+      if (savedSession) {
+        try {
+          const parsed = JSON.parse(savedSession)
+          if (parsed.messages && parsed.messages.length > 0) setMessages(parsed.messages)
+          if (parsed.structuredResume) setStructuredResume(parsed.structuredResume)
+          if (parsed.findings) setFindings(parsed.findings)
+        } catch {}
+      }
     }
     setIsAuthChecking(false)
   }, [])
+
+  // Auto-save session across changes
+  useEffect(() => {
+    if (userEmail) {
+      const stateToSave = {
+        messages,
+        structuredResume,
+        findings,
+        updatedAt: new Date().toISOString()
+      }
+      localStorage.setItem(`curriculo_session_${userEmail}`, JSON.stringify(stateToSave))
+    }
+  }, [userEmail, messages, structuredResume, findings])
 
   const handleLoginSuccess = (email: string, name?: string, photo?: string) => {
     setUserEmail(email)
     localStorage.setItem('user_session_email', email)
     if (name) localStorage.setItem('user_session_name', name)
     if (photo) localStorage.setItem('user_session_photo', photo)
+
+    // Load any existing session for this email
+    const savedSession = localStorage.getItem(`curriculo_session_${email}`)
+    if (savedSession) {
+      try {
+        const parsed = JSON.parse(savedSession)
+        if (parsed.messages && parsed.messages.length > 0) setMessages(parsed.messages)
+        if (parsed.structuredResume) setStructuredResume(parsed.structuredResume)
+        if (parsed.findings) setFindings(parsed.findings)
+      } catch {}
+    }
   }
 
   const handleSignOut = () => {
@@ -306,7 +340,7 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
               className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
             >
               <Eye className="w-3.5 h-3.5" />
-              <span>Ver Vista Previa & Descargas</span>
+              <span>Ver Vista Previa & Diseños</span>
             </button>
           </div>
         )}
@@ -356,7 +390,7 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
                 className="mt-3 w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0"
               >
                 <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Abrir Vista Previa del CV</span>
+                <span>Abrir Diseños & Descargas</span>
               </button>
             )}
           </div>
