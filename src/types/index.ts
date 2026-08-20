@@ -3,6 +3,7 @@ export type AgentId = 'diagnoser' | 'recruiter' | 'hiring_manager' | 'rewriter' 
 export interface AgentInfo {
   id: AgentId
   name: string
+  title?: string
   role: string
   avatar: string
   description: string
