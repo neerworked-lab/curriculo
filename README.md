@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📄 Resume Studio · Multi-Agent AI Career Architect
 
-## Getting Started
+> Aplicación web moderna y minimalista con arquitectura **4 Agentes Especializados de Élite + The Orchestrator** impulsada por **Google Gemini**, con soporte de subida de currículums (PDF/Word), fotos de perfil y exportación multi-formato (**PDF, Word .docx y PowerPoint .pptx**).
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🤖 Panel de Agentes de Élite
+
+```mermaid
+flowchart TD
+    User([Usuario / Candidato]) <-->|Chat + PDF / Word / Fotos| Orchestrator[🎙️ The Orchestrator]
+    
+    subgraph MultiAgentEngine [Pipeline de Análisis y Transformación]
+        Orchestrator -->|1. CV Parseado + Contexto| Diagnoser[🔍 The Diagnoser]
+        Diagnoser -->|Diagnóstico + Score ATS + Gaps| Recruiter[🎯 The Recruiter]
+        Recruiter -->|Filtro 6s + Palabras Clave| HiringManager[💼 The Hiring Manager]
+        HiringManager -->|Liderazgo + Impacto Cuantitativo STAR/XYZ| Rewriter[✍️ The Rewriter]
+    end
+    
+    Rewriter -->|CV Estructurado JSON| Orchestrator
+    Orchestrator -->|Exportación Multi-formato| ExportEngine[📦 Export Hub]
+    ExportEngine --> PDF[📄 PDF ATS-Friendly]
+    ExportEngine --> Word[📝 Word .DOCX Editable]
+    ExportEngine --> PPTX[📊 Presentación .PPTX]
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 1. 🎙️ The Orchestrator
+Director Ejecutivo del estudio. Atiende al usuario en el chat conversacional, coordina la intervención de los 4 agentes y despacha las descargas de los archivos maquetados.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 2. 🔍 The Diagnoser
+*Motto: "Understand beyond the surface · Analyze, Diagnose, Solve"*
+Audita la estructura del CV, detecta inconsistencias, vacíos de experiencia y calcula el puntaje de compatibilidad ATS (0-100%).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. 🎯 The Recruiter
+*Motto: "Find the right people. Build what matters · Find, Attract, Engage, Hire"*
+Evalúa la escaneabilidad en los primeros 6 segundos y optimiza la densidad de palabras clave según el rol deseado.
 
-## Learn More
+### 4. 💼 The Hiring Manager
+*Motto: "I hire people. I build legacy · Find leaders, Build teams, Drive impact, Deliver results"*
+Transforma descripciones de tareas pasivas en logros de alto impacto cuantificable con la fórmula **Google XYZ** (*Logré X medido por Y haciendo Z*).
 
-To learn more about Next.js, take a look at the following resources:
+### 5. ✍️ The Rewriter
+*Motto: "Stronger resumes. Better opportunities · Analyze, Rewrite, Optimize, Elevate"*
+Redacta la versión ejecutiva final con copy persuasivo de alto nivel y genera la estructura JSON lista para maquetar.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## ✨ Características Principales
 
-## Deploy on Vercel
+- **Chat Conversacional Fluido:** Interfaz interactiva estilo Antigravity / ChatGPT con soporte para Drag & Drop.
+- **Ingesta Inteligente de Documentos:** Extracción instantánea de texto desde archivos **PDF** (`pdf-parse`) y **Word .docx** (`mammoth`), con soporte de fotos de perfil.
+- **Vista Dividida en Vivo (Split-View):** Previsualización en tiempo real del currículum maquetado con medidor del Score ATS.
+- **Exportación Multi-formato:**
+  - 📄 **PDF:** Diseño moderno, limpio y 100% compatible con lectores ATS.
+  - 📝 **Word (.docx):** Documento nativo 100% editable generado con `docx`.
+  - 📊 **PowerPoint (.pptx):** Presentación ejecutiva / One-pager deck en 16:9 generado con `pptxgenjs`.
+- **Autenticación con Google:** Integración directa con Supabase Auth y acceso por correo.
+- **Configuración de Google Gemini:** Soporte para Gemini 2.0 Flash / 1.5 Pro mediante `.env.local` o configuración en vivo desde la interfaz.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🚀 Instalación y Puesta en Marcha
+
+1. **Clonar el repositorio:**
+   ```bash
+   git clone https://github.com/neerworked-lab/curriculo.git
+   cd curriculo
+   ```
+
+2. **Instalar dependencias:**
+   ```bash
+   npm install --legacy-peer-deps
+   ```
+
+3. **Configurar variables de entorno:**
+   Copia el archivo `.env.example` a `.env.local` y define tus credenciales:
+   ```bash
+   cp .env.example .env.local
+   ```
+   ```env
+   GEMINI_API_KEY=tu_clave_de_gemini
+   NEXT_PUBLIC_SUPABASE_URL=tu_url_de_supabase
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key_de_supabase
+   ```
+
+4. **Iniciar el servidor de desarrollo:**
+   ```bash
+   npm run dev
+   ```
+   Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+
+---
+
+## 🛠️ Stack Tecnológico
+
+- **Framework:** Next.js 14+ (App Router)
+- **Lenguaje:** TypeScript estricto
+- **Estilos:** Tailwind CSS & Lucide Icons
+- **IA Engine:** Google Gemini SDK (`@google/generative-ai`)
+- **Parsers:** `pdf-parse`, `mammoth`
+- **Exporters:** `docx`, `pptxgenjs`, `jspdf`
+- **Auth:** Supabase Auth (Google OAuth)

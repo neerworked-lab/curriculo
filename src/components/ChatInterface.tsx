@@ -1,0 +1,324 @@
+'use client'
+
+import React, { useState, useRef, useEffect } from 'react'
+import { ChatMessage, Attachment, StructuredResume } from '@/types'
+import {
+  Send,
+  Paperclip,
+  Image as ImageIcon,
+  FileText,
+  Sparkles,
+  Loader2,
+  CheckCircle2,
+  Download,
+  UploadCloud,
+  FileSpreadsheet,
+  Cpu,
+  Trash2
+} from 'lucide-react'
+
+interface ChatInterfaceProps {
+  messages: ChatMessage[]
+  onSendMessage: (text: string, attachments?: Attachment[]) => Promise<void>
+  onUploadFile: (file: File) => Promise<Attachment | null>
+  isProcessing: boolean
+  onTriggerPipeline: (rawText: string, targetRole?: string) => Promise<void>
+  onQuickDownload: (format: 'pdf' | 'docx' | 'pptx') => void
+  hasActiveResume: boolean
+}
+
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({
+  messages,
+  onSendMessage,
+  onUploadFile,
+  isProcessing,
+  onTriggerPipeline,
+  onQuickDownload,
+  hasActiveResume
+}) => {
+  const [inputText, setInputText] = useState('')
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isProcessing])
+
+  const handleSend = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if ((!inputText.trim() && attachments.length === 0) || isProcessing) return
+
+    const textToSend = inputText
+    const attachmentsToSend = [...attachments]
+
+    setInputText('')
+    setAttachments([])
+
+    await onSendMessage(textToSend, attachmentsToSend)
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    try {
+      const att = await onUploadFile(file)
+      if (att) {
+        setAttachments((prev) => [...prev, att])
+      }
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      if (photoInputRef.current) photoInputRef.current.value = ''
+    }
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    try {
+      const att = await onUploadFile(file)
+      if (att) {
+        setAttachments((prev) => [...prev, att])
+      }
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const quickPrompts = [
+    { label: '🔍 Auditar mi CV actual (Score ATS)', prompt: 'Por favor audita mi currículum actual y dime qué fallas y score ATS tiene.' },
+    { label: '🚀 Transformar logros con Google XYZ', prompt: 'Quiero que The Hiring Manager reescriba mis logros con la fórmula STAR y Google XYZ.' },
+    { label: '🎯 Optimizar para puesto Senior / Lead', prompt: 'Quiero enfocar y optimizar mi currículum para postular a una vacante Senior.' },
+    { label: '✨ Redactar CV completo desde cero', prompt: 'Hola, ayúdame a crear mi currículum vitae desde cero. Te iré dando mis datos.' }
+  ]
+
+  return (
+    <div
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={handleDrop}
+      className={`h-full flex flex-col bg-slate-950 rounded-2xl border transition-colors relative overflow-hidden ${
+        isDragging ? 'border-emerald-500 bg-emerald-950/20' : 'border-slate-800/80'
+      }`}
+    >
+      {/* Drag overlay notice */}
+      {isDragging && (
+        <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-40 flex flex-col items-center justify-center pointer-events-none text-emerald-400">
+          <UploadCloud className="w-16 h-16 animate-bounce mb-3" />
+          <h4 className="text-lg font-bold">Suelta tu archivo aquí</h4>
+          <p className="text-xs text-slate-400">Soporta PDF, Word (.docx) y Fotos (JPG/PNG)</p>
+        </div>
+      )}
+
+      {/* Messages Scroll Area */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar">
+        {messages.map((msg) => {
+          const isUser = msg.sender === 'user'
+          return (
+            <div
+              key={msg.id}
+              className={`flex gap-3 text-left ${isUser ? 'justify-end' : 'justify-start'}`}
+            >
+              {/* Agent Avatar */}
+              {!isUser && (
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20 text-slate-950 font-bold text-xs mt-0.5">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+              )}
+
+              {/* Message Bubble */}
+              <div
+                className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed shadow-lg ${
+                  isUser
+                    ? 'bg-emerald-600 text-white rounded-tr-none'
+                    : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none'
+                }`}
+              >
+                {/* Sender badge */}
+                <div className="flex items-center justify-between gap-2 mb-1.5 pb-1 border-b border-white/10 text-[10px] opacity-70">
+                  <span className="font-mono uppercase font-semibold">
+                    {isUser ? 'Tú' : 'The Orchestrator & Panel'}
+                  </span>
+                  <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+
+                {/* Attachments preview inside bubble */}
+                {msg.attachments && msg.attachments.length > 0 && (
+                  <div className="mb-2.5 flex flex-wrap gap-2">
+                    {msg.attachments.map((att, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/30 border border-white/10 text-xs font-mono"
+                      >
+                        {att.type === 'image' ? (
+                          <ImageIcon className="w-3.5 h-3.5 text-teal-300" />
+                        ) : (
+                          <FileText className="w-3.5 h-3.5 text-emerald-300" />
+                        )}
+                        <span className="truncate max-w-[150px]">{att.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Text Content */}
+                <div className="whitespace-pre-wrap space-y-2">
+                  {msg.text.replace(/```json\s*(?:structured_resume)?[\s\S]*?```/g, '').trim()}
+                </div>
+
+                {/* Quick Action Download Box if structured resume is attached */}
+                {msg.structuredResume && (
+                  <div className="mt-4 pt-3 border-t border-slate-700/80 flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-semibold text-emerald-400 block w-full mb-1">
+                      📥 Descargas directas disponibles:
+                    </span>
+                    <button
+                      onClick={() => onQuickDownload('pdf')}
+                      className="px-2.5 py-1 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-medium flex items-center gap-1 transition-colors"
+                    >
+                      <Download className="w-3 h-3" /> PDF
+                    </button>
+                    <button
+                      onClick={() => onQuickDownload('docx')}
+                      className="px-2.5 py-1 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-xs font-medium flex items-center gap-1 transition-colors"
+                    >
+                      <Download className="w-3 h-3" /> Word (.docx)
+                    </button>
+                    <button
+                      onClick={() => onQuickDownload('pptx')}
+                      className="px-2.5 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-medium flex items-center gap-1 transition-colors"
+                    >
+                      <Download className="w-3 h-3" /> PowerPoint (.pptx)
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Loading Indicator */}
+        {isProcessing && (
+          <div className="flex gap-3 text-left items-center">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shrink-0 shadow-md text-slate-950">
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
+            <div className="px-4 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>The Orchestrator y los agentes están deliberando...</span>
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Quick Prompts Carousel */}
+      <div className="px-4 py-2 bg-slate-950/80 border-t border-slate-900 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+        {quickPrompts.map((item, idx) => (
+          <button
+            key={idx}
+            onClick={() => onSendMessage(item.prompt)}
+            disabled={isProcessing}
+            className="shrink-0 px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-[11px] text-slate-300 transition-colors hover:border-slate-700 disabled:opacity-50"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Attachment Chips in Composer */}
+      {attachments.length > 0 && (
+        <div className="px-4 pt-2 flex flex-wrap gap-2 bg-slate-950">
+          {attachments.map((att, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-emerald-300 font-mono"
+            >
+              {att.type === 'image' ? <ImageIcon className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+              <span className="truncate max-w-[160px]">{att.name}</span>
+              <button
+                type="button"
+                onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                className="p-0.5 hover:text-red-400 ml-1"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input Composer */}
+      <form onSubmit={handleSend} className="p-3 sm:p-4 bg-slate-950 border-t border-slate-800/80 flex items-center gap-2">
+        {/* Hidden inputs */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept=".pdf,.docx,.doc,.txt"
+          className="hidden"
+        />
+        <input
+          type="file"
+          ref={photoInputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          className="hidden"
+        />
+
+        {/* Upload Doc Button */}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading || isProcessing}
+          className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors disabled:opacity-50"
+          title="Subir documento PDF o Word"
+        >
+          {isUploading ? <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> : <Paperclip className="w-4 h-4" />}
+        </button>
+
+        {/* Upload Photo Button */}
+        <button
+          type="button"
+          onClick={() => photoInputRef.current?.click()}
+          disabled={isUploading || isProcessing}
+          className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors disabled:opacity-50"
+          title="Subir foto de perfil"
+        >
+          <ImageIcon className="w-4 h-4" />
+        </button>
+
+        {/* Text Input */}
+        <input
+          type="text"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Escribe a The Orchestrator o sube tu CV (PDF/Word)..."
+          disabled={isProcessing}
+          className="flex-1 bg-slate-900/90 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-2.5 text-xs sm:text-sm border border-slate-800 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/40 transition-all"
+        />
+
+        {/* Send Button */}
+        <button
+          type="submit"
+          disabled={(!inputText.trim() && attachments.length === 0) || isProcessing}
+          className="p-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all disabled:opacity-40 disabled:hover:bg-emerald-500 shadow-md shadow-emerald-500/20"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      </form>
+    </div>
+  )
+}
