@@ -241,7 +241,8 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
       const data = await runOrchestratorChat({
         messages: historyForApi,
         extractedFileContent: extractedDocText || undefined,
-        photoUrl
+        photoUrl,
+        currentResume: structuredResume
       })
 
       if (data.structuredResume) {

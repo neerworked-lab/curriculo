@@ -43,8 +43,12 @@ export async function runOrchestratorChat(params: {
   userApiKey?: string;
   extractedFileContent?: string;
   photoUrl?: string;
+  currentResume?: StructuredResume | null;
 }) {
   let promptContext = ''
+  if (params.currentResume) {
+    promptContext += `\n[CURRICULUM_ACTUAL_EN_MEMORIA]:\n\`\`\`json\n${JSON.stringify(params.currentResume, null, 2)}\n\`\`\`\n(Usa esta información para responder y actualizar el CV sin pedir que el usuario lo vuelva a subir)\n`
+  }
   if (params.extractedFileContent) {
     promptContext += `\n[CONTENIDO DEL DOCUMENTO ORIGINAL CARGADO]:\n${params.extractedFileContent}\n`
   }
