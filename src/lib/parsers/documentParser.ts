@@ -1,18 +1,60 @@
 import mammoth from 'mammoth'
 
 /**
- * Universal PDF text extractor for browser & mobile environments
+ * Loads Mozilla's official PDF.js dynamically in browser without bundling Node canvas
  */
-export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
-  // Strategy 1: Use Mozilla's pdfjs-dist
-  try {
-    const pdfjsLib = await import('pdfjs-dist/build/pdf')
-    
-    // Configure worker via CDN for client-side bundle isolation
-    if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '3.11.174'}/pdf.worker.min.js`
+function getBrowserPdfJs(): Promise<any> {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('PDF.js client-only'))
+  }
+
+  if ((window as any).pdfjsLib) {
+    return Promise.resolve((window as any).pdfjsLib)
+  }
+
+  return new Promise((resolve, reject) => {
+    const existingScript = document.getElementById('pdfjs-cdn-script')
+    if (existingScript) {
+      const checkInterval = setInterval(() => {
+        if ((window as any).pdfjsLib) {
+          clearInterval(checkInterval)
+          resolve((window as any).pdfjsLib)
+        }
+      }, 50)
+      setTimeout(() => {
+        clearInterval(checkInterval)
+        if ((window as any).pdfjsLib) resolve((window as any).pdfjsLib)
+        else reject(new Error('PDF.js script timeout'))
+      }, 3000)
+      return
     }
 
+    const script = document.createElement('script')
+    script.id = 'pdfjs-cdn-script'
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+    script.async = true
+    script.onload = () => {
+      const pdfjs = (window as any).pdfjsLib
+      if (pdfjs) {
+        pdfjs.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+        resolve(pdfjs)
+      } else {
+        reject(new Error('PDF.js not available on window'))
+      }
+    }
+    script.onerror = () => reject(new Error('Failed to load PDF.js from CDN'))
+    document.head.appendChild(script)
+  })
+}
+
+/**
+ * Universal PDF extractor using Mozilla PDF.js + Binary Stream Fallback
+ */
+export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
+  // Strategy 1: Dynamic Mozilla PDF.js
+  try {
+    const pdfjsLib = await getBrowserPdfJs()
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(arrayBuffer),
       useWorkerFetch: false,
@@ -36,7 +78,7 @@ export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<str
       return fullText.trim()
     }
   } catch (pdfErr) {
-    console.warn('pdfjs-dist strategy failed, falling back to binary stream extraction:', pdfErr)
+    console.warn('PDF.js dynamic load failed, using binary stream extractor:', pdfErr)
   }
 
   // Strategy 2: Resilient Native Binary PDF Stream Extractor
@@ -52,8 +94,8 @@ export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<str
       }
     }
 
-    // Match text blocks inside PDF (Tj, TJ, and text between parentheses)
-    const textMatches = rawString.match(/\(([^\\)]{2,})\)\s*(?:Tj|TJ|')/g) || rawString.match(/\(([^()]{3,})\)/g)
+    const textMatches =
+      rawString.match(/\(([^\\)]{2,})\)\s*(?:Tj|TJ|')/g) || rawString.match(/\(([^()]{3,})\)/g)
     if (textMatches && textMatches.length > 0) {
       const extracted = textMatches
         .map((chunk) => chunk.replace(/[\\()]/g, ' ').replace(/\s+/g, ' ').trim())
@@ -65,20 +107,19 @@ export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<str
       }
     }
 
-    // Cleaned printable text fallback
     const cleaned = rawString.replace(/[^\w\s.,;:()@/+-]/g, ' ').replace(/\s{2,}/g, ' ')
     if (cleaned.length > 50) {
       return cleaned.slice(0, 5000)
     }
   } catch (fallbackErr) {
-    console.error('Binary stream extraction failed:', fallbackErr)
+    console.error('Binary PDF stream extraction failed:', fallbackErr)
   }
 
-  throw new Error('No se pudo extraer texto legible del PDF. Por favor verifica que el archivo no esté protegido con contraseña.')
+  throw new Error('No se pudo extraer texto del PDF. Por favor verifica que no esté protegido o sube tu CV en formato Word.')
 }
 
 /**
- * Universal DOCX text extractor for browser & mobile
+ * Universal DOCX text extractor
  */
 export async function parseDocxArrayBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
@@ -90,7 +131,7 @@ export async function parseDocxArrayBuffer(arrayBuffer: ArrayBuffer): Promise<st
     console.warn('Mammoth arrayBuffer failed, trying fallback extraction:', err)
   }
 
-  // Fallback: try raw text decode in case it was a plain text or RTF disguised as doc
+  // Fallback: decode raw XML structure
   try {
     const decoded = new TextDecoder('utf-8').decode(arrayBuffer)
     const textMatches = decoded.match(/<w:t[^>]*>([^<]+)<\/w:t>/g)
@@ -101,7 +142,7 @@ export async function parseDocxArrayBuffer(arrayBuffer: ArrayBuffer): Promise<st
     console.error('DOCX fallback failed:', err)
   }
 
-  throw new Error('No se pudo leer el archivo Word (.docx). Asegúrate de que sea un archivo Word válido.')
+  throw new Error('No se pudo leer el archivo Word (.docx). Asegúrate de que sea un archivo válido.')
 }
 
 /**
