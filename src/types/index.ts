@@ -4,14 +4,14 @@ export interface AgentInfo {
   id: AgentId
   name: string
   title?: string
-  role: string
+  role?: string
   roleDescription?: string
   color?: string
   accentColor?: string
   avatar: string
-  description: string
+  description?: string
   motto: string
-  capabilities: string[]
+  capabilities?: string[]
 }
 
 export interface Attachment {
