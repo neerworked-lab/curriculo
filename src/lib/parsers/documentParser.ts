@@ -1,7 +1,7 @@
 import mammoth from 'mammoth'
 
 /**
- * Loads Mozilla's official PDF.js dynamically in browser without bundling Node canvas
+ * Loads Mozilla's official PDF.js dynamically in browser
  */
 function getBrowserPdfJs(): Promise<any> {
   if (typeof window === 'undefined') {
@@ -49,10 +49,13 @@ function getBrowserPdfJs(): Promise<any> {
 }
 
 /**
- * Universal PDF extractor using Mozilla PDF.js + Binary Stream Fallback
+ * Universal PDF extractor using Mozilla PDF.js with page rendering & binary fallback
  */
-export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
-  // Strategy 1: Dynamic Mozilla PDF.js
+export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<{
+  text: string
+  photoUrl?: string
+}> {
+  // Strategy 1: Dynamic Mozilla PDF.js with first page image snapshot for photo extraction
   try {
     const pdfjsLib = await getBrowserPdfJs()
     const loadingTask = pdfjsLib.getDocument({
@@ -64,6 +67,7 @@ export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<str
 
     const pdfDoc = await loadingTask.promise
     let fullText = ''
+    let photoUrl: string | undefined = undefined
 
     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
       const page = await pdfDoc.getPage(pageNum)
@@ -72,10 +76,46 @@ export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<str
         .map((item: any) => item.str || '')
         .join(' ')
       fullText += pageText + '\n\n'
+
+      // Render Page 1 to canvas to extract profile photo snapshot if available
+      if (pageNum === 1 && typeof document !== 'undefined') {
+        try {
+          const viewport = page.getViewport({ scale: 1.0 })
+          const canvas = document.createElement('canvas')
+          const context = canvas.getContext('2d')
+          canvas.height = viewport.height
+          canvas.width = viewport.width
+
+          if (context) {
+            await page.render({ canvasContext: context, viewport }).promise
+            // Crop top-left quadrant where CV photo is typically located
+            const photoCanvas = document.createElement('canvas')
+            photoCanvas.width = 300
+            photoCanvas.height = 300
+            const photoCtx = photoCanvas.getContext('2d')
+            if (photoCtx) {
+              photoCtx.drawImage(
+                canvas,
+                canvas.width * 0.05,
+                canvas.height * 0.05,
+                canvas.width * 0.35,
+                canvas.height * 0.3,
+                0,
+                0,
+                300,
+                300
+              )
+              photoUrl = photoCanvas.toDataURL('image/jpeg', 0.85)
+            }
+          }
+        } catch (renderErr) {
+          console.warn('Could not snapshot PDF page 1 for photo:', renderErr)
+        }
+      }
     }
 
     if (fullText.trim().length > 10) {
-      return fullText.trim()
+      return { text: fullText.trim(), photoUrl }
     }
   } catch (pdfErr) {
     console.warn('PDF.js dynamic load failed, using binary stream extractor:', pdfErr)
@@ -103,19 +143,19 @@ export async function parsePdfArrayBuffer(arrayBuffer: ArrayBuffer): Promise<str
         .join('\n')
 
       if (extracted.trim().length > 20) {
-        return extracted
+        return { text: extracted }
       }
     }
 
     const cleaned = rawString.replace(/[^\w\s.,;:()@/+-]/g, ' ').replace(/\s{2,}/g, ' ')
     if (cleaned.length > 50) {
-      return cleaned.slice(0, 5000)
+      return { text: cleaned.slice(0, 5000) }
     }
   } catch (fallbackErr) {
     console.error('Binary PDF stream extraction failed:', fallbackErr)
   }
 
-  throw new Error('No se pudo extraer texto del PDF. Por favor verifica que no esté protegido o sube tu CV en formato Word.')
+  throw new Error('No se pudo extraer texto del PDF. Por favor verifica que el archivo contenga texto legible.')
 }
 
 /**
@@ -142,7 +182,7 @@ export async function parseDocxArrayBuffer(arrayBuffer: ArrayBuffer): Promise<st
     console.error('DOCX fallback failed:', err)
   }
 
-  throw new Error('No se pudo leer el archivo Word (.docx). Asegúrate de que sea un archivo válido.')
+  throw new Error('No se pudo leer el archivo Word (.docx).')
 }
 
 /**
@@ -175,8 +215,8 @@ export async function parseUploadedFile(file: File): Promise<{
   const arrayBuffer = await file.arrayBuffer()
 
   if (fileType === 'pdf') {
-    const text = await parsePdfArrayBuffer(arrayBuffer)
-    return { text, fileType }
+    const parsedPdf = await parsePdfArrayBuffer(arrayBuffer)
+    return { text: parsedPdf.text, fileType, photoUrl: parsedPdf.photoUrl }
   }
 
   if (fileType === 'docx') {

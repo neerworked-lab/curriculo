@@ -29,6 +29,11 @@ export interface ChatMessage {
   timestamp: string
   attachments?: Attachment[]
   structuredResume?: StructuredResume
+  agentStep?: {
+    agentId: AgentId
+    agentName: string
+    status: 'analyzing' | 'completed'
+  }
 }
 
 export interface WorkExperience {
@@ -46,46 +51,40 @@ export interface Education {
   id: string
   institution: string
   degree: string
-  fieldOfStudy: string
-  startDate: string
-  endDate: string
+  fieldOfStudy?: string
+  startDate?: string
+  endDate?: string
   grade?: string
 }
 
 export interface Certification {
   name: string
   issuer: string
-  date: string
+  date?: string
   credentialUrl?: string
 }
 
-export interface Project {
-  name: string
-  description: string
-  technologies: string[]
-  url?: string
-}
-
 export interface StructuredResume {
-  templateId?: 'executive' | 'bento' | 'tech' | 'classic'
+  templateId?: 'original_sidebar' | 'executive' | 'bento' | 'tech' | 'classic'
   personalInfo: {
     fullName: string
-    idNumber?: string // Cédula / DNI / Pasaporte
+    idNumber?: string // Cédula / DNI
+    age?: string // Edad
+    maritalStatus?: string // Estado civil
+    nationality?: string // Nacionalidad
     title: string
-    email: string
-    phone: string
-    location: string
-    summary: string
+    email?: string
+    phone?: string
+    location?: string
+    summary?: string
     photoUrl?: string
     linkedin?: string
     github?: string
     portfolioUrl?: string
-    nationality?: string
   }
   workExperience: WorkExperience[]
   education: Education[]
   certifications?: Certification[]
-  projects?: Project[]
   skills: {
     technical: string[]
     tools: string[]

@@ -12,7 +12,7 @@ import { generateDocxResume } from '@/lib/exporters/wordExporter'
 import { generatePptxResume } from '@/lib/exporters/pptxExporter'
 import { generatePdfResume } from '@/lib/exporters/pdfExporter'
 import { parseUploadedFile } from '@/lib/parsers/documentParser'
-import { Eye, Sparkles } from 'lucide-react'
+import { Eye, Sparkles, Activity } from 'lucide-react'
 
 export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -32,6 +32,7 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
   const [structuredResume, setStructuredResume] = useState<StructuredResume | null>(null)
   const [findings, setFindings] = useState<AgentFinding[]>([])
   const [activeAgentId, setActiveAgentId] = useState<AgentId | null>(null)
+  const [activeAgentStatusText, setActiveAgentStatusText] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -73,7 +74,6 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
     if (name) localStorage.setItem('user_session_name', name)
     if (photo) localStorage.setItem('user_session_photo', photo)
 
-    // Load any existing session for this email
     const savedSession = localStorage.getItem(`curriculo_session_${email}`)
     if (savedSession) {
       try {
@@ -107,7 +107,7 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
     }
   }
 
-  // Complete 4-Agent Pipeline Execution
+  // Complete Sequential 4-Agent Pipeline Execution with Visual Step Illuminations
   const handleTriggerPipeline = async (
     rawText: string,
     targetRole?: string,
@@ -115,24 +115,43 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
     userInstructions?: string
   ) => {
     setIsProcessing(true)
-    setActiveAgentId('diagnoser')
 
-    const pipelineMsgId = `pipeline-${Date.now()}`
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: pipelineMsgId,
-        sender: 'orchestrator',
-        text: `⏳ Documentos recibidos. Activando el panel de 4 agentes especialistas:
-1. 🔍 **The Diagnoser:** Auditando estructura y calculando Score ATS...
-2. 🎯 **The Recruiter:** Analizando impacto en los primeros 6 segundos y keywords...
-3. 💼 **The Hiring Manager:** Reformulando logros bajo fórmula Google XYZ...
-4. ✍️ **The Rewriter:** Generando versión ejecutiva final...`,
-        timestamp: new Date().toISOString()
-      }
-    ])
+    const addAgentLog = (agentName: string, text: string) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `step-${Date.now()}-${Math.random()}`,
+          sender: 'orchestrator',
+          text: `⚡ **${agentName}:** ${text}`,
+          timestamp: new Date().toISOString()
+        }
+      ])
+    }
 
     try {
+      // Step 1: The Diagnoser
+      setActiveAgentId('diagnoser')
+      setActiveAgentStatusText('Auditando estructura, cédula y compatibilidad ATS...')
+      addAgentLog('The Diagnoser', 'Escaneando estructura completa del CV original y calculando métricas de compatibilidad ATS...')
+      await new Promise((r) => setTimeout(r, 1200))
+
+      // Step 2: The Recruiter
+      setActiveAgentId('recruiter')
+      setActiveAgentStatusText('Optimizando impacto visual en 6 segundos y densidad de palabras clave...')
+      addAgentLog('The Recruiter', 'Analizando jerarquía visual para selector humano y alineación de términos clave...')
+      await new Promise((r) => setTimeout(r, 1200))
+
+      // Step 3: The Hiring Manager
+      setActiveAgentId('hiring_manager')
+      setActiveAgentStatusText('Cuantificando responsabilidades y liderazgo bajo Google XYZ...')
+      addAgentLog('The Hiring Manager', 'Elevando el impacto de la trayectoria laboral y cargos institucionales bajo la metodología Google XYZ...')
+      await new Promise((r) => setTimeout(r, 1200))
+
+      // Step 4: The Rewriter
+      setActiveAgentId('rewriter')
+      setActiveAgentStatusText('Maquetando el diseño original en 2 columnas y puliendo la redacción...')
+      addAgentLog('The Rewriter', 'Generando la versión ejecutiva final con la plantilla original de 2 columnas, foto y datos completos...')
+
       const combinedText = userInstructions
         ? `[INSTRUCCIONES DEL USUARIO]:\n${userInstructions}\n\n[DOCUMENTOS ADJUNTOS]:\n${rawText}`
         : rawText
@@ -146,6 +165,7 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
       setFindings(result.findings)
       setStructuredResume(result.finalResume)
       setActiveAgentId(null)
+      setActiveAgentStatusText('')
 
       setMessages((prev) => [
         ...prev,
@@ -170,6 +190,7 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
     } finally {
       setIsProcessing(false)
       setActiveAgentId(null)
+      setActiveAgentStatusText('')
     }
   }
 
@@ -187,7 +208,7 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
 
     setMessages((prev) => [...prev, userMsg])
 
-    // Collect all attached documents
+    // Collect all attached documents and photos
     let extractedDocText = ''
     let photoUrl: string | undefined = undefined
 
@@ -198,6 +219,9 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
       if (att.type === 'image' && att.url) {
         photoUrl = att.url
       }
+      if (att.url && !photoUrl) {
+        photoUrl = att.url
+      }
     })
 
     // If documents are attached, trigger complete 4-agent transformation
@@ -206,7 +230,7 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
       return
     }
 
-    // Standard conversational interaction with Alex
+    // Standard interactive conversation with Alex
     setIsProcessing(true)
     try {
       const historyForApi = [...messages, userMsg].map((m) => ({
@@ -240,7 +264,7 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
         {
           id: `err-${Date.now()}`,
           sender: 'orchestrator',
-          text: `⚠️ Hubo un detalle de comunicación con la IA: ${err.message}`,
+          text: `⚠️ Detalle de comunicación: ${err.message}`,
           timestamp: new Date().toISOString()
         }
       ])
@@ -361,7 +385,7 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
             />
           </div>
 
-          {/* Desktop Right Sidebar: 4 Specialized Agents Panel */}
+          {/* Desktop Right Sidebar: 4 Specialized Agents Panel with Active Illumination */}
           <div className="hidden lg:flex lg:col-span-4 xl:col-span-3 h-full min-h-0 flex-col bg-slate-950/80 rounded-2xl border border-slate-800/80 p-3 overflow-hidden shadow-xl">
             <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-2">
@@ -370,9 +394,16 @@ Puedes **adjuntar tu CV actual (Word o PDF)**, subir una foto de perfil y escrib
                   Panel de Agentes IA
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-semibold">
-                4 Activos
-              </span>
+              {activeAgentId ? (
+                <span className="text-[10px] font-mono text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40 font-bold animate-pulse flex items-center gap-1">
+                  <Activity className="w-2.5 h-2.5 animate-spin" />
+                  Procesando
+                </span>
+              ) : (
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-semibold">
+                  4 Activos
+                </span>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
