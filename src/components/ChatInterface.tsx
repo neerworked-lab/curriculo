@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { ChatMessage, Attachment, StructuredResume } from '@/types'
+import { ChatMessage, Attachment } from '@/types'
 import {
   Send,
   Paperclip,
@@ -9,12 +9,13 @@ import {
   FileText,
   Sparkles,
   Loader2,
-  CheckCircle2,
   Download,
   UploadCloud,
-  FileSpreadsheet,
-  Cpu,
-  Trash2
+  Trash2,
+  PlusCircle,
+  RefreshCw,
+  Mic,
+  MicOff
 } from 'lucide-react'
 
 interface ChatInterfaceProps {
@@ -32,22 +33,71 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onSendMessage,
   onUploadFile,
   isProcessing,
-  onTriggerPipeline,
-  onQuickDownload,
-  hasActiveResume
+  onQuickDownload
 }) => {
   const [inputText, setInputText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const recognitionRef = useRef<any>(null)
 
+  // Auto-scroll on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isProcessing])
+
+  // Speech to text initialization
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition()
+        recognition.continuous = false
+        recognition.interimResults = false
+        recognition.lang = 'es-ES'
+
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript
+          setInputText((prev) => (prev ? `${prev} ${transcript}` : transcript))
+          setIsRecording(false)
+        }
+
+        recognition.onerror = () => {
+          setIsRecording(false)
+        }
+
+        recognition.onend = () => {
+          setIsRecording(false)
+        }
+
+        recognitionRef.current = recognition
+      }
+    }
+  }, [])
+
+  const toggleRecording = () => {
+    if (!recognitionRef.current) {
+      alert('Tu navegador no soporta dictado por voz directo. Puedes escribir normalmente.')
+      return
+    }
+
+    if (isRecording) {
+      recognitionRef.current.stop()
+      setIsRecording(false)
+    } else {
+      try {
+        recognitionRef.current.start()
+        setIsRecording(true)
+      } catch {
+        setIsRecording(false)
+      }
+    }
+  }
 
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -97,49 +147,58 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }
 
   const quickPrompts = [
-    { label: '🔍 Auditar mi CV actual (Score ATS)', prompt: 'Por favor audita mi currículum actual y dime qué fallas y score ATS tiene.' },
-    { label: '🚀 Transformar logros con Google XYZ', prompt: 'Quiero que The Hiring Manager reescriba mis logros con la fórmula STAR y Google XYZ.' },
-    { label: '🎯 Optimizar para puesto Senior / Lead', prompt: 'Quiero enfocar y optimizar mi currículum para postular a una vacante Senior.' },
-    { label: '✨ Redactar CV completo desde cero', prompt: 'Hola, ayúdame a crear mi currículum vitae desde cero. Te iré dando mis datos.' }
+    {
+      label: 'Crea un Currículum Vitae nuevo',
+      icon: PlusCircle,
+      prompt: 'Hola Alex, quiero crear un Currículum Vitae nuevo desde cero. Por favor guíame paso a paso.'
+    },
+    {
+      label: 'Actualiza Currículum Vitae',
+      icon: RefreshCw,
+      prompt: 'Hola Alex, quiero actualizar y optimizar mi Currículum Vitae actual para aumentar mi impacto y Score ATS.'
+    }
   ]
 
   return (
     <div
-      onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        setIsDragging(true)
+      }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
-      className={`h-full flex flex-col bg-slate-950 rounded-2xl border transition-colors relative overflow-hidden ${
+      className={`h-full flex flex-col bg-slate-950 rounded-2xl border transition-colors relative overflow-hidden min-h-0 ${
         isDragging ? 'border-emerald-500 bg-emerald-950/20' : 'border-slate-800/80'
       }`}
     >
       {/* Drag overlay notice */}
       {isDragging && (
         <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-40 flex flex-col items-center justify-center pointer-events-none text-emerald-400">
-          <UploadCloud className="w-16 h-16 animate-bounce mb-3" />
-          <h4 className="text-lg font-bold">Suelta tu archivo aquí</h4>
-          <p className="text-xs text-slate-400">Soporta PDF, Word (.docx) y Fotos (JPG/PNG)</p>
+          <UploadCloud className="w-12 h-12 sm:w-16 sm:h-16 animate-bounce mb-3" />
+          <h4 className="text-base sm:text-lg font-bold">Suelta tu archivo aquí</h4>
+          <p className="text-[11px] sm:text-xs text-slate-400">Soporta PDF, Word (.docx) y Fotos (JPG/PNG)</p>
         </div>
       )}
 
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar">
+      {/* 1. TOP SCROLLABLE MESSAGES AREA (Independent Scroll like Antigravity) */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3.5 custom-scrollbar min-h-0">
         {messages.map((msg) => {
           const isUser = msg.sender === 'user'
           return (
             <div
               key={msg.id}
-              className={`flex gap-3 text-left ${isUser ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-2.5 text-left ${isUser ? 'justify-end' : 'justify-start'}`}
             >
               {/* Agent Avatar */}
               {!isUser && (
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20 text-slate-950 font-bold text-xs mt-0.5">
-                  <Sparkles className="w-4 h-4" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20 text-slate-950 font-bold text-xs mt-0.5">
+                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
               )}
 
               {/* Message Bubble */}
               <div
-                className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed shadow-lg ${
+                className={`max-w-[90%] sm:max-w-[78%] rounded-2xl p-3.5 sm:p-4 text-xs sm:text-sm leading-relaxed shadow-lg ${
                   isUser
                     ? 'bg-emerald-600 text-white rounded-tr-none'
                     : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none'
@@ -148,58 +207,60 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 {/* Sender badge */}
                 <div className="flex items-center justify-between gap-2 mb-1.5 pb-1 border-b border-white/10 text-[10px] opacity-70">
                   <span className="font-mono uppercase font-semibold">
-                    {isUser ? 'Tú' : 'The Orchestrator & Panel'}
+                    {isUser ? 'Tú' : 'Alex (Asesor IA)'}
                   </span>
-                  <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
 
                 {/* Attachments preview inside bubble */}
                 {msg.attachments && msg.attachments.length > 0 && (
-                  <div className="mb-2.5 flex flex-wrap gap-2">
+                  <div className="mb-2 flex flex-wrap gap-1.5">
                     {msg.attachments.map((att, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/30 border border-white/10 text-xs font-mono"
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/30 border border-white/10 text-[11px] font-mono"
                       >
                         {att.type === 'image' ? (
-                          <ImageIcon className="w-3.5 h-3.5 text-teal-300" />
+                          <ImageIcon className="w-3 h-3 text-teal-300" />
                         ) : (
-                          <FileText className="w-3.5 h-3.5 text-emerald-300" />
+                          <FileText className="w-3 h-3 text-emerald-300" />
                         )}
-                        <span className="truncate max-w-[150px]">{att.name}</span>
+                        <span className="truncate max-w-[130px]">{att.name}</span>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {/* Text Content */}
-                <div className="whitespace-pre-wrap space-y-2">
+                <div className="whitespace-pre-wrap space-y-2 text-xs sm:text-sm">
                   {msg.text.replace(/```json\s*(?:structured_resume)?[\s\S]*?```/g, '').trim()}
                 </div>
 
                 {/* Quick Action Download Box if structured resume is attached */}
                 {msg.structuredResume && (
-                  <div className="mt-4 pt-3 border-t border-slate-700/80 flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] font-semibold text-emerald-400 block w-full mb-1">
+                  <div className="mt-3 pt-2.5 border-t border-slate-700/80 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-400 block w-full mb-0.5">
                       📥 Descargas directas disponibles:
                     </span>
                     <button
                       onClick={() => onQuickDownload('pdf')}
-                      className="px-2.5 py-1 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-medium flex items-center gap-1 transition-colors"
+                      className="px-2 py-1 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-medium flex items-center gap-1 transition-colors"
                     >
                       <Download className="w-3 h-3" /> PDF
                     </button>
                     <button
                       onClick={() => onQuickDownload('docx')}
-                      className="px-2.5 py-1 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-xs font-medium flex items-center gap-1 transition-colors"
+                      className="px-2 py-1 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-[11px] font-medium flex items-center gap-1 transition-colors"
                     >
                       <Download className="w-3 h-3" /> Word (.docx)
                     </button>
                     <button
                       onClick={() => onQuickDownload('pptx')}
-                      className="px-2.5 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-medium flex items-center gap-1 transition-colors"
+                      className="px-2 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-medium flex items-center gap-1 transition-colors"
                     >
-                      <Download className="w-3 h-3" /> PowerPoint (.pptx)
+                      <Download className="w-3 h-3" /> PPTX
                     </button>
                   </div>
                 )}
@@ -210,13 +271,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {/* Loading Indicator */}
         {isProcessing && (
-          <div className="flex gap-3 text-left items-center">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shrink-0 shadow-md text-slate-950">
-              <Loader2 className="w-4 h-4 animate-spin" />
+          <div className="flex gap-2.5 text-left items-center">
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shrink-0 shadow-md text-slate-950">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             </div>
-            <div className="px-4 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
+            <div className="px-3.5 py-2 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>The Orchestrator y los agentes están deliberando...</span>
+              <span>Alex está analizando tu solicitud...</span>
             </div>
           </div>
         )}
@@ -224,44 +285,52 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Prompts Carousel */}
-      <div className="px-4 py-2 bg-slate-950/80 border-t border-slate-900 flex items-center gap-2 overflow-x-auto custom-scrollbar">
-        {quickPrompts.map((item, idx) => (
-          <button
-            key={idx}
-            onClick={() => onSendMessage(item.prompt)}
-            disabled={isProcessing}
-            className="shrink-0 px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-[11px] text-slate-300 transition-colors hover:border-slate-700 disabled:opacity-50"
-          >
-            {item.label}
-          </button>
-        ))}
+      {/* 2. QUICK ACTIONS (Fixed above composer) */}
+      <div className="p-2 sm:px-4 sm:py-2 bg-slate-950/95 border-t border-slate-900 grid grid-cols-2 gap-1.5 shrink-0 z-10">
+        {quickPrompts.map((item, idx) => {
+          const Icon = item.icon
+          return (
+            <button
+              key={idx}
+              onClick={() => onSendMessage(item.prompt)}
+              disabled={isProcessing}
+              className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-[10px] sm:text-xs font-medium text-slate-200 transition-colors hover:border-emerald-500/40 disabled:opacity-50 text-center leading-tight truncate shadow-sm"
+              title={item.label}
+            >
+              <Icon className="w-3 h-3 text-emerald-400 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* Attachment Chips in Composer */}
+      {/* 3. ATTACHMENT CHIPS */}
       {attachments.length > 0 && (
-        <div className="px-4 pt-2 flex flex-wrap gap-2 bg-slate-950">
+        <div className="px-3 pt-1.5 flex flex-wrap gap-1.5 bg-slate-950 shrink-0 z-10">
           {attachments.map((att, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-emerald-300 font-mono"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-[10px] text-emerald-300 font-mono"
             >
-              {att.type === 'image' ? <ImageIcon className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-              <span className="truncate max-w-[160px]">{att.name}</span>
+              {att.type === 'image' ? <ImageIcon className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+              <span className="truncate max-w-[120px]">{att.name}</span>
               <button
                 type="button"
                 onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
-                className="p-0.5 hover:text-red-400 ml-1"
+                className="p-0.5 hover:text-red-400 ml-0.5"
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-2.5 h-2.5" />
               </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Input Composer */}
-      <form onSubmit={handleSend} className="p-3 sm:p-4 bg-slate-950 border-t border-slate-800/80 flex items-center gap-2">
+      {/* 4. PERMANENT FIXED INPUT COMPOSER (Always visible at the bottom) */}
+      <form
+        onSubmit={handleSend}
+        className="p-2 sm:p-3 bg-slate-950 border-t border-slate-800/80 flex items-center gap-1.5 shrink-0 z-10 sticky bottom-0"
+      >
         {/* Hidden inputs */}
         <input
           type="file"
@@ -283,10 +352,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading || isProcessing}
-          className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors disabled:opacity-50"
+          className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors disabled:opacity-50 shrink-0"
           title="Subir documento PDF o Word"
         >
-          {isUploading ? <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> : <Paperclip className="w-4 h-4" />}
+          {isUploading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+          ) : (
+            <Paperclip className="w-4 h-4" />
+          )}
         </button>
 
         {/* Upload Photo Button */}
@@ -294,7 +367,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           type="button"
           onClick={() => photoInputRef.current?.click()}
           disabled={isUploading || isProcessing}
-          className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors disabled:opacity-50"
+          className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors disabled:opacity-50 shrink-0"
           title="Subir foto de perfil"
         >
           <ImageIcon className="w-4 h-4" />
@@ -305,16 +378,32 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder="Escribe a The Orchestrator o sube tu CV (PDF/Word)..."
+          placeholder="Escribe a Alex o sube tu CV..."
           disabled={isProcessing}
-          className="flex-1 bg-slate-900/90 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-2.5 text-xs sm:text-sm border border-slate-800 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/40 transition-all"
+          className="min-w-0 flex-1 bg-slate-900/90 text-slate-100 placeholder-slate-500 rounded-xl px-3 py-2 text-xs sm:text-sm border border-slate-800 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/40 transition-all"
         />
+
+        {/* Microphone Button (Speech to Text) */}
+        <button
+          type="button"
+          onClick={toggleRecording}
+          disabled={isProcessing}
+          className={`p-2 rounded-xl border transition-all shrink-0 ${
+            isRecording
+              ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse'
+              : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+          }`}
+          title={isRecording ? 'Detener grabación' : 'Dictar mensaje por voz'}
+        >
+          {isRecording ? <MicOff className="w-4 h-4 text-red-400" /> : <Mic className="w-4 h-4" />}
+        </button>
 
         {/* Send Button */}
         <button
           type="submit"
           disabled={(!inputText.trim() && attachments.length === 0) || isProcessing}
-          className="p-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all disabled:opacity-40 disabled:hover:bg-emerald-500 shadow-md shadow-emerald-500/20"
+          className="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all disabled:opacity-40 disabled:hover:bg-emerald-500 shadow-md shadow-emerald-500/20 shrink-0"
+          title="Enviar mensaje"
         >
           <Send className="w-4 h-4" />
         </button>

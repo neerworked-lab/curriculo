@@ -21,15 +21,9 @@ export default function Home() {
     {
       id: 'welcome-1',
       sender: 'orchestrator',
-      text: `¡Hola! Soy **The Orchestrator**, el Director Ejecutivo del Estudio Multi-Agente de Currículums.
+      text: `¡Hola! Soy **Alex**, tu asesor y agente de IA para la creación y optimización de tu Currículum Vitae.
 
-Estoy aquí junto a nuestro panel de 4 agentes de élite:
-- 🔍 **The Diagnoser:** Auditará la estructura, vacíos y calculará tu **Score ATS**.
-- 🎯 **The Recruiter:** Evaluará el impacto de los primeros 6 segundos y optimizará las **palabras clave**.
-- 💼 **The Hiring Manager:** Reformulará tus logros con la fórmula **Google XYZ** (*Logré X medido por Y haciendo Z*).
-- ✍️ **The Rewriter:** Redactará la versión ejecutiva final impecable.
-
-Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfil, o simplemente contarme tus objetivos profesionales para comenzar. ¿Qué te gustaría hacer hoy?`,
+Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfil, o simplemente contarme tus objetivos profesionales para comenzar. ¿En qué te puedo ayudar hoy?`,
       timestamp: new Date().toISOString()
     }
   ])
@@ -49,9 +43,11 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
     setIsAuthChecking(false)
   }, [])
 
-  const handleLoginSuccess = (email: string) => {
+  const handleLoginSuccess = (email: string, name?: string, photo?: string) => {
     setUserEmail(email)
     localStorage.setItem('user_session_email', email)
+    if (name) localStorage.setItem('user_session_name', name)
+    if (photo) localStorage.setItem('user_session_photo', photo)
   }
 
   const handleSignOut = () => {
@@ -266,7 +262,7 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
 
   // Main Studio Application
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
+    <div className="h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 overflow-hidden">
       <Navbar
         userEmail={userEmail}
         onSignOut={handleSignOut}
@@ -275,15 +271,18 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
         hasActiveResume={Boolean(structuredResume)}
       />
 
-      <main className="flex-1 max-w-[1700px] w-full mx-auto p-3 sm:p-5 flex flex-col gap-4 overflow-hidden">
-        <AgentStatusCard
-          findings={findings}
-          activeAgentId={activeAgentId}
-          isRunningPipeline={isProcessing}
-        />
+      <main className="flex-1 max-w-[1700px] w-full mx-auto p-2 sm:p-4 flex flex-col gap-2 sm:gap-3 overflow-hidden min-h-0">
+        {/* Agent Cards (compact on mobile) */}
+        <div className="hidden sm:block shrink-0">
+          <AgentStatusCard
+            findings={findings}
+            activeAgentId={activeAgentId}
+            isRunningPipeline={isProcessing}
+          />
+        </div>
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[580px] h-[calc(100vh-250px)]">
-          <div className={`${splitView ? 'lg:col-span-6 xl:col-span-5' : 'lg:col-span-12'} h-full transition-all duration-300`}>
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0 overflow-hidden">
+          <div className={`${splitView ? 'lg:col-span-6 xl:col-span-5' : 'lg:col-span-12'} h-full min-h-0 transition-all duration-300`}>
             <ChatInterface
               messages={messages}
               onSendMessage={handleSendMessage}
@@ -296,7 +295,7 @@ Puedes **arrastrar y soltar tu CV actual (PDF o Word)**, subir una foto de perfi
           </div>
 
           {splitView && (
-            <div className="hidden lg:block lg:col-span-6 xl:col-span-7 h-full transition-all duration-300">
+            <div className="hidden lg:block lg:col-span-6 xl:col-span-7 h-full min-h-0 transition-all duration-300">
               <ResumePreview
                 resume={structuredResume}
                 onDownload={handleDownload}

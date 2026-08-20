@@ -3,10 +3,10 @@ import { AgentInfo } from '@/types'
 export const AGENTS: Record<string, AgentInfo> = {
   orchestrator: {
     id: 'orchestrator',
-    name: 'The Orchestrator',
-    title: 'Executive Career Director & Host',
-    motto: 'Coordinating elite agents to build your legacy',
-    roleDescription: 'Interactúa con el usuario, coordina la intervención de los agentes y presenta los entregables finales.',
+    name: 'Alex',
+    title: 'Asesor Principal & Agente IA',
+    motto: 'Tu copiloto de IA para diseñar tu mejor currículum profesional',
+    roleDescription: 'Interactúa contigo en el chat, coordina el panel de los 4 agentes y te entrega tus documentos listos para descargar.',
     avatar: '/agents/orchestrator.jpg',
     color: 'emerald',
     accentColor: '#10b981'

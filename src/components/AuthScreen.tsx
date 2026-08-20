@@ -1,35 +1,93 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Sparkles, Mail, ArrowRight, ShieldCheck, CheckCircle2, Loader2, Cpu, FileText } from 'lucide-react'
-import { signInWithGoogle, isSupabaseConfigured } from '@/lib/supabase'
+import { Sparkles, Mail, ArrowRight, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react'
 
 interface AuthScreenProps {
-  onLoginSuccess: (email: string) => void
+  onLoginSuccess: (email: string, name?: string, photo?: string) => void
 }
+
+declare global {
+  interface Window {
+    google?: any
+  }
+}
+
+const GOOGLE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  '367871257866-p07lails8h1lhtfnqt5l93jbc35f51dn.apps.googleusercontent.com'
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const googleBtnRef = useRef<HTMLDivElement>(null)
 
-  const handleGoogleLogin = async () => {
-    setIsLoading(true)
-    setErrorMessage(null)
-    try {
-      if (isSupabaseConfigured) {
-        await signInWithGoogle()
-      } else {
-        // Instant verified access if Supabase is initializing
-        setTimeout(() => {
-          onLoginSuccess('erick.diaz@growhack.ai')
-        }, 500)
+  // Initialize official Google Identity Services (GSI)
+  useEffect(() => {
+    const handleCredentialResponse = (response: any) => {
+      try {
+        setIsLoading(true)
+        // Decode Google JWT payload safely
+        const base64Url = response.credential.split('.')[1]
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        )
+        const user = JSON.parse(jsonPayload)
+        if (user.email) {
+          onLoginSuccess(user.email, user.name, user.picture)
+        }
+      } catch (err: any) {
+        setErrorMessage('Error al procesar la respuesta de Google: ' + err.message)
+      } finally {
+        setIsLoading(false)
       }
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Error al autenticar con Google')
-    } finally {
-      setIsLoading(false)
+    }
+
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        })
+
+        // Render official customized Google button
+        if (googleBtnRef.current) {
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: 'filled_white',
+            size: 'large',
+            type: 'standard',
+            shape: 'rectangular',
+            text: 'continue_with',
+            logo_alignment: 'center',
+            width: 340
+          })
+        }
+      }
+    }
+    document.body.appendChild(script)
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
+    }
+  }, [onLoginSuccess])
+
+  const handleCustomGoogleClick = () => {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.prompt()
     }
   }
 
@@ -87,7 +145,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           </div>
           <div>
             <h1 className="font-bold text-base tracking-tight text-white">Currículum Vitae</h1>
-            <p className="text-[11px] text-emerald-400 font-mono font-medium">CUATRO AGENTES IA</p>
+            <p className="text-[11px] text-emerald-400 font-mono font-medium">AGENTE IA</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-[11px] text-emerald-400 font-mono">
@@ -111,7 +169,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           </h2>
 
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl">
-            Conversa con <strong>The Orchestrator</strong>, sube tu CV actual (PDF/Word) o tus fotos de perfil y obtén un currículum de impacto mundial descargable en <strong>PDF, Word (.docx) y PowerPoint (.pptx)</strong>.
+            Conversa con <strong>Alex, nuestro agente IA</strong>, sube tu CV actual (PDF/Word) o tus fotos de perfil y obtén un currículum de impacto mundial descargable en <strong>PDF, Word (.docx) y PowerPoint (.pptx)</strong>.
           </p>
 
           {/* 4 Agents Mini Grid */}
@@ -158,7 +216,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             <div className="mb-6">
               <h3 className="text-xl font-bold text-white tracking-tight">Acceso a la Plataforma</h3>
               <p className="text-xs text-slate-400 mt-1">
-                Inicia sesión o regístrate para interactuar con los agentes
+                Inicia sesión con tu cuenta oficial de Google o tu correo
               </p>
             </div>
 
@@ -169,34 +227,35 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             )}
 
             <div className="space-y-4">
-              {/* Google OAuth Button */}
+              {/* Official Google Sign-In Button Container */}
+              <div className="w-full flex justify-center py-1">
+                <div ref={googleBtnRef} className="w-full flex justify-center" />
+              </div>
+
+              {/* Fallback button if script is loading */}
               <button
-                onClick={handleGoogleLogin}
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                type="button"
+                onClick={handleCustomGoogleClick}
+                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs transition-all shadow-md sm:hidden"
               >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-900" />
-                ) : (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.04 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                    />
-                  </svg>
-                )}
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.04 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                  />
+                </svg>
                 <span>Continuar con Google</span>
               </button>
 
@@ -237,7 +296,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             {/* Privacy notice */}
             <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center gap-2 text-[10px] text-slate-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Acceso seguro. Tus datos y currículums son estrictamente confidenciales.</span>
+              <span>Autenticación oficial de Google. Datos protegidos y confidenciales.</span>
             </div>
           </div>
         </div>
@@ -245,7 +304,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
       {/* Minimal Footer */}
       <footer className="py-4 px-6 border-t border-slate-900/80 text-center text-xs text-slate-400 font-mono">
-        © 2026 Resume Studio · Multi-Agent Career Architecture · Powered by Google Gemini
+        © 2026 Currículum Vitae · Cuatro Agentes IA · Powered by Google Gemini
       </footer>
     </div>
   )
