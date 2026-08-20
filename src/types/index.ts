@@ -65,7 +65,7 @@ export interface Certification {
 }
 
 export interface StructuredResume {
-  templateId?: 'original_sidebar' | 'executive' | 'bento' | 'tech' | 'classic'
+  templateId?: 'canva_editorial' | 'original_sidebar' | 'executive' | 'bento' | 'tech' | 'classic'
   personalInfo: {
     fullName: string
     idNumber?: string // Cédula / DNI
